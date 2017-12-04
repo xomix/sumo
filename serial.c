@@ -7,7 +7,7 @@
 
 void serial_init()
 {
-	cli();
+	//cli();
 	#include <util/setbaud.h> /* Macros to set baudrate */
 	UBRR0H = UBRRH_VALUE;
 	UBRR0L = UBRRL_VALUE;
@@ -19,8 +19,8 @@ void serial_init()
 	#endif
 
 	/* Enable transmit and receive. Enable receive interrupts */
-	UCSR0B |= ( 1<<TXEN0 ) | ( 1<<RXEN0 ) | ( 1<<RXCIE0 );
-	sei();
+	UCSR0B |= ( 1<<TXEN0 ) | ( 1<<RXEN0 );
+	//sei();
 }
 
 /* serial_write_char

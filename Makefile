@@ -6,10 +6,10 @@ OBJS=hello.o serial.o
 CC=avr-gcc
 OBJCOPY=avr-objcopy
 MCU=atmega328p
-CFLAGS=-Os -DF_CPU=18000000UL -DBAUD=115200 -mmcu=${MCU} -Wall
+CFLAGS=-Os -DF_CPU=16000000UL -DBAUD=115200 -mmcu=${MCU} -Wall
 PORT=/dev/ttyACM0
 
-.PHONY: install clean backup disassemble
+.PHONY: install clean backup disassemble monitor
 
 ${BIN}.hex: ${BIN}.elf
 	    ${OBJCOPY} -O ihex -R .eeprom $< $@
@@ -31,3 +31,5 @@ disassemble: ${BIN}.lst
 
 backup:
 	avrdude -F -V -c arduino -p ${MCU} -P ${PORT} -b 115200 -U flash:r:flash_backup.hex:i
+monitor:
+	screen ${PORT} 115200
