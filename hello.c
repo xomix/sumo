@@ -40,20 +40,20 @@ int main(void)
 	serial_init();
 	while(1)
 	{
-		serial_print_str("hola\n");
+		serial_send_str("hola\n");
 		_delay_ms(1000);
-		//if(StrRxFlag)
-		//{
-			//// Copy buffer
-			//ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-			//{
-			//for (int j=0; j<20; j++)
-				//str[j] = buffer[j];
-			//}
-			//StrRxFlag = 0;
-			serial_print_str(str);
-			serial_print_str("\n");
-		//}
+		if(StrRxFlag)
+		{
+			// Copy buffer
+			ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+			{
+			for (int j=0; j<20; j++)
+				str[j] = buffer[j];
+			}
+			StrRxFlag = 0;
+			serial_send_str(str);
+			serial_send_str("\n");
+		}
 	}
 	return 0;
 }
