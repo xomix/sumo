@@ -61,9 +61,6 @@ void serial_init()
 	 * UCPOL0
 	 */
 
-	// Disable interrupts
-	cli();
-
        	/* Macros to set baudrate */
 	/* Based on BAUD and F_CPU defines they will set:
 	 * 
@@ -84,8 +81,6 @@ void serial_init()
 	/* Enable transmit and receive. Enable receive interrupts */
 	UCSR0B |= ( 1<<TXEN0 ) | ( 1<<RXEN0 );
 
-	// Enable interrupts
-	sei();
 }
 
 /* serial_send_char

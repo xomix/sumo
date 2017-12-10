@@ -15,29 +15,43 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include "serial.h"
-//#include <util/atomic.h>
+#include <util/atomic.h>
 
-//volatile int i= 0;
-//volatile char buffer[20];
-//volatile uint8_t StrRxFlag = 0;
+volatile int i= 0;
+volatile char buffer[20];
+volatile uint8_t StrRxFlag = 0;
 char str[20] = "hello!";
 
-//ISR(USART_RX_vect)
-//{
-	//buffer[i] = UDR0;
-	//if ( buffer[i++] == '\r' )
-	//{
-		//StrRxFlag = 1;
-		//buffer[i-1] = 0x00;
-		//i=0;
-	//}
-//}
+ISR(USART_RX_vect)
+{
+	buffer[i] = UDR0;
+	if ( buffer[i++] == '\r' )
+	{
+		StrRxFlag = 1;
+		buffer[i-1] = 0x00;
+		i=0;
+	}
+}
 
 // define F_CPU in makefile
 // define BAUD in makefile
+
+
+void init(void){
+	// Disable interrupts
+	cli();
+	// Init serial port
+	serial_init();
+	// Enable interrupts
+	sei();
+
+}
 int main(void)
 {
-	serial_init();
+	// Initialize everything
+	init();
+
+	// Main loop
 	while(1)
 	{
 		serial_send_str("hola\n");
