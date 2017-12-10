@@ -3,13 +3,15 @@
 BIN=hello
 OBJS=hello.o serial.o
 
+BAUD=9600
+
 CC=avr-gcc
 OBJCOPY=avr-objcopy
 MCU=atmega328p
-CFLAGS=-Os -DF_CPU=18000000UL -DBAUD=115200 -mmcu=${MCU} -Wall
+CFLAGS=-Os -DF_CPU=16000000UL -DBAUD=${BAUD}UL -mmcu=${MCU} -Wall
 PORT=/dev/ttyACM0
 
-.PHONY: install clean backup disassemble
+.PHONY: install clean backup disassemble monitor
 
 ${BIN}.hex: ${BIN}.elf
 	    ${OBJCOPY} -O ihex -R .eeprom $< $@
@@ -17,7 +19,7 @@ ${BIN}.hex: ${BIN}.elf
 ${BIN}.elf: ${OBJS}
 	    ${CC} ${CFLAGS} -o $@ $^ 
 
-${BIN}.lst: ${BIN}
+${BIN}.lst: ${OBJS}
 	avr-objdump -d $^ > $@
 
 #install: backup ${BIN}.hex
@@ -31,3 +33,6 @@ disassemble: ${BIN}.lst
 
 backup:
 	avrdude -F -V -c arduino -p ${MCU} -P ${PORT} -b 115200 -U flash:r:flash_backup.hex:i
+
+monitor:
+	screen ${PORT} ${BAUD}

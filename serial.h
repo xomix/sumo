@@ -9,10 +9,7 @@
 #include <util/delay.h>
 #include <avr/interrupt.h>
 
-#ifndef BAUD
-#define BAUD 115200
-#endif
 void serial_init();
-void _serial_write_char(char c);
-void serial_print_str(char * s);
+void _serial_send_char(char c);
+void serial_send_str(char * s);
 #endif
