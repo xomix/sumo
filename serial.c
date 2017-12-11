@@ -79,7 +79,7 @@ void serial_init()
 	#endif
 
 	/* Enable transmit and receive. Enable receive interrupts */
-	UCSR0B |= ( 1<<TXEN0 ) | ( 1<<RXEN0 );
+	UCSR0B |= ( 1<<TXEN0 ) | ( 1<<RXEN0 ) | ( 1<<RXCIE0 );
 
 }
 

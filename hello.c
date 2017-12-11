@@ -20,7 +20,7 @@
 volatile int i= 0;
 volatile char buffer[20];
 volatile uint8_t StrRxFlag = 0;
-char str[20] = "hello!";
+char str[20] ;
 
 ISR(USART_RX_vect)
 {
@@ -59,11 +59,11 @@ int main(void)
 		if(StrRxFlag)
 		{
 			// Copy buffer
-			ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-			{
+			//ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+			//{
 			for (int j=0; j<20; j++)
 				str[j] = buffer[j];
-			}
+			//}
 			StrRxFlag = 0;
 			serial_send_str(str);
 			serial_send_str("\n");
