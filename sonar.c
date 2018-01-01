@@ -7,27 +7,48 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 #include <string.h>
-// SONAR_MAX_RANGE is time in ticks for 1 meter distance
-// 	Integer division of 2 * F_CPU / 343 which is the elapsed time for a sonar signal
-// 	to go and come back to a 1 meter distance object, in ticks.
-// 	It helps filtering out objects further than one meter
-#define SONAR_MAX_RANGE 93300
-// SONAR_MIN_RANGE is time in ticks for 2cm
-// 	2 cm * 2 (go - come back)
-// 	Sound speed 343 m/s
-// 	1 tick = 1 / F_CPU
-// 	to go and come back to a 1 meter distance object, in ticks.
-// 	It helps filtering out objects further than one meter
-#define SONAR_MIN_RANGE 1840
-// Min sonar distance is 2 cm
-// One tick is 1 / F_CPU seconds
-// Speed of sound is 343 m/s
-// Sound does twice the distance
-// SONAR_TICKS_TO_CM is 343 * 100 / ( F_CPU * 2 )
-// 93.29 or 0.01071875
-#define SONAR_TICKS_TO_CM 93
 
-char message[20]="Not trigger";
+// SONAR_SOUND_SPEED
+// 	Speed of sound in m/s
+#define SONAR_SOUND_SPEED 343
+// 	MAX RANGE in meters is 1 meter.
+#define MAX_RANGE_METERS 1
+#define MIN_RANGE_CM 2
+// SONAR_MAX_RANGE is time in ticks for 2 * MAX_RANGE_METERS meters distance
+// 	Go and come back means 2 * MAX_RANGE_METERS in meters.
+//	Time elapsed for an object in range limit is 2 * MAX_RANGE_METERS / SONAR_SOUND_SPEED seconds
+//		~ 5.831 ms
+// 	We will use 64 as prescaler, which means 1 tick is 64 / F_CPU seconds
+// 		= 0.004 ms (F_CPU = 16Mhz)
+//	Number of ticks max is then 2 * MAX_RANGE_METERS * F_CPU / SONAR_SOUND_SPEED / 64
+//		~ 1458 ticks
+// 	It helps filtering out objects further than 1 meter
+// 	TODO (Jaume): integer division in macro instead of hardcoded
+#define SONAR_MAX_RANGE 1458
+// SONAR_MIN_RANGE is time in ticks for 2 * MIN_RANGE_CM cm distance
+// 	2 * MIN_RANGE_CM (go - come back)
+//	Time elapsed for an object in range limit is ( 2 * MIN_RANGE_CM / 100 ) / SONAR_SOUND_SPEED seconds
+//		~ 5.831 ms
+// 	We will use 64 as prescaler, which means 1 tick is 64 / F_CPU seconds
+// 		= 0.004 ms (F_CPU = 16Mhz)
+//	Number of ticks min is then 2 * MIN_RANGE_CM * F_CPU / 100 / SONAR_SOUND_SPEED / 64
+//		~ 29
+// 	It helps filtering out objects nearer than 2 cm
+// 	TODO (Jaume): integer division in macro instead of hardcoded
+#define SONAR_MIN_RANGE 29
+// SONAR_TICKS_TO_CM
+// 	1 tick ~ 0.004 ms
+// 	343 m/s
+//	One tick is 64 / F_CPU seconds
+//	Speed of sound is 343 m/s
+//	Sound does twice the distance
+//	SONAR_TICKS_TO_CM is 343 * 100 * 64 / ( F_CPU * 2 )
+//		~ 14.58 or 0.0686
+#define SONAR_TICKS_TO_CM 14
+// 	TODO (Jaume): integer division in macro instead of hardcoded
+
+char message[20]="Not trigger\n";
+//int distance = 1;
 
 // Pseudo code
 //
@@ -76,9 +97,13 @@ char message[20]="Not trigger";
 
 
 volatile uint16_t pwidth = 0;
+volatile uint16_t last = 0;
 volatile uint8_t  edge = 0;
 
 void sonar_init(int Tpin) {
+	/* Initializes timer1 and output pin for sonar */
+
+
 	// Define trigger (echo pin is arduion pin 8 or avr PINB0 (ICP1)
 	// Define input pin with pull-up resistors
 	// Enable interrupt on input capture: TIMSK1.ICIE = 1
@@ -128,11 +153,15 @@ void sonar_init(int Tpin) {
 	//
 	//
 	// TCCR1C (TimerCounter1 Control Register C)
+
+	// Reset TIMER1
 	TCCR1A = 0x00; // initialise High byte to zero
 	TCCR1B = 0x00; // initialise Mid byte to zero
 	TCCR1C = 0x00; // initialise Low byte to zero
+	// Initialize TIMER1
+	// TCCR1B |= (_BV(CS11)|_BV(CS10)); // Set the prescaler to 64
 	TCCR1B |= _BV(ICES1); // enable rising edge capture
-	TIMSK1 |= (_BV(ICIE1)); // enable input capture interrupt
+	TIMSK1 |= _BV(ICIE1); // enable input capture interrupt
 	// Set trigger pin as output
 	// TODO(jaume): Map arduino uno pin to atmega328p pin
 	// Uses pin9 (pb1) temporary
@@ -155,13 +184,11 @@ char * sonar_query(int Tpin) {
 	else if (Tpin > 8 && Tpin < 14){
 		// Port B. We exclude pin8, as is used as echo pin
 	}
-
-	
 	
 	// check if trigger already sent (timer running)
 	if ( ! (TCCR1B & (1<<CS10)) ) {
 		// Do the HC-SR104 Trigger
-		strcpy(message,"Triggering");
+		strcpy(message,"Triggering...\n");
 		
 		// Set trigger pin low
 		PORTB &= ~(_BV(PB1));
@@ -175,21 +202,22 @@ char * sonar_query(int Tpin) {
 		// Set trigger pin low
 		PORTB &= ~(_BV(PB1));
 
-		TIMSK1 &= ~(1<<TOIE1); // disable overflow interrupt
+		//TIMSK1 |= (1<<TOIE1); // enable overflow interrupt
 		TCCR1B |= (1 << ICES1); // Set interrupt to capture rising edge 
-		TCCR1B |= _BV(CS10); // start timer1, no prescaler
+		TCCR1B |= (_BV(CS11)|_BV(CS10)); // Start timer1 with 64 prescaler
+		TIMSK1 |= _BV(ICIE1); // enable input capture interrupt
 	}
 
 	return message;
 }
 
 int sonar_get_distance(int Tpin) {
+	int distance=-1;
 	// returns distance in cm for selected sensor
-	int distance = 1;
-	if (pwidth != 0 && pwidth < SONAR_MAX_RANGE && pwidth > SONAR_MIN_RANGE) {
-		distance = pwidth / SONAR_TICKS_TO_CM ;  // pwidth in ticks. Timer1 without prescaler, time in seconds is pwidth / F_CPU
+	if (last != 0 ) { //&& last < SONAR_MAX_RANGE && last > SONAR_MIN_RANGE) {
+		distance = last / SONAR_TICKS_TO_CM ;  // pwidth in ticks. Timer1 without prescaler, time in seconds is pwidth / F_CPU
 	}
-	else if (pwidth == -5) {
+	else if (last == -5) {
 		distance = -5;
 	}
 	return distance;
@@ -204,27 +232,33 @@ ISR(TIMER1_CAPT_vect)
 		TCNT1 = 0; // Reset timer, so timer in falling edge will be the time we are looking for
 		pwidth = 0; // Reset pwidth.
 		TCCR1B &= ~(_BV(ICES1)); // Set interrupt to capture falling edge
-		TIMSK1 |= (_BV(TOIE1)); // enable overflow interrupt
+		//TIMSK1 |= (_BV(TOIE1)); // enable overflow interrupt
+		//TIFR1 &= ~(_BV(ICF1)); // Reset the interrupt capture flag
 	}
 	else {
 		pwidth = ICR1; // Copy elapsed time. When using interrupts TCNT1 is copied automatically to ICR1
+		if (pwidth < SONAR_MAX_RANGE)
+			last = pwidth;  // Copy elapsed time. When using interrupts TCNT1 is copied automatically to ICR1
 		TCCR1B &= ~(_BV(CS10)); // stop timer1 to signal that measure is done.
-		TIMSK1 &= ~(_BV(TOIE1)); // disable overflow interrupt
+		//TIMSK1 &= ~(_BV(TOIE1)); // disable overflow interrupt
 		TCNT1 = 0; // Reset timer
 		TCCR1B |= (1 << ICES1); // Set interrupt to capture rising edge 
+		//TIFR1 &= ~(_BV(ICF1)); // Reset the interrupt capture flag
 	}
 	edge = !edge;
 }
 // Timer1 Overflow ISR
+/*
 ISR(TIMER1_OVF_vect)
 {
 	// Sensor max pulse width is 38 ms.
-	// Timer1 max is 2^16 / 1.6*10^6 = 40.92 ms
+	// Timer1 max is 2^16 * 64 / 1.6*10^7 = 4.92 ms
 	// If we get here, time out, so stop timer and set variables accordingly
 	TCCR1B &= ~(_BV(CS10)); // stop timer1 to signal that measure is done.
-	pwidth = -5; // elapsed time timed-out.
+	pwidth = 0; // elapsed time timed-out.
 	//TCCR1B |= (1 << ICES1); // Set interrupt to capture rising edge 
 	TIMSK1 &= ~(_BV(TOIE1)); // disable overflow interrupt
 	TCNT1 = 0; // Reset timer
 	edge = 0; // Reset edge
 }
+*/
