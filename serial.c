@@ -14,16 +14,16 @@ void serial_init()
 	 * UBRRH0 = (F_CPU / (BAUD*16))-1
 	 *
 	 * UBRR0H
-	 * 15	14	13	12	11	10	9	8
-	 * -	-	-	-	MSB	-	-	LSB
+	 * 15   14      13      12      11      10      9       8
+	 * -    -       -       -       MSB     -       -       LSB
 	 * UBRR0L
-	 * 7	6	5	4	3	2	1	0
-	 * MSB	-	-	-	-	-	-	LSB
+	 * 7    6       5       4       3       2       1       0
+	 * MSB  -       -       -       -       -       -       LSB
 	 *
 	 * UART Control and Status Register
 	 * UCSR0A
-	 * 7	6	5	4	3	2	1	0
-	 * RXC0	TXC0	UDRE0	FE0	DR0	UPE0	U2X0	MPCM0
+	 * 7    6       5       4       3       2       1       0
+	 * RXC0 TXC0    UDRE0   FE0     DR0     UPE0    U2X0    MPCM0
 	 *
 	 * RXC0 Receive Complete
 	 * TXC Tranmit Coplete
@@ -35,8 +35,8 @@ void serial_init()
 	 * MPCM0 Multi Processor Communication Mode
 	 *
 	 * UCSR0B
-	 * 7		6		5		4		3		2		1		0
-	 * RXCIE0	TXCIE0		UDRIE0		RXEN0		TXEN0		UCSZ02		RXB80		TXB80
+	 * 7            6               5               4               3               2               1               0
+	 * RXCIE0       TXCIE0          UDRIE0          RXEN0           TXEN0           UCSZ02          RXB80           TXB80
 	 *
 	 * RXCIE0 Enable Receive Complete Interrupt
 	 * TXCIE0 Enable TX Complete Interrupt
@@ -48,8 +48,8 @@ void serial_init()
 	 * TXB80  9th data bit to transfer when 9bits data set
 	 *
 	 * UCSR0C
-	 * 7		6		5		4		3		2		1		0
-	 * UMSEL01	UMSEL00		UPM01		UPM00		USBS0		UCSZ01/UDORD0	UCSZ00/UCPHA0	UCPOL0
+	 * 7            6               5               4               3               2               1               0
+	 * UMSEL01      UMSEL00         UPM01           UPM00           USBS0           UCSZ01/UDORD0   UCSZ00/UCPHA0   UCPOL0
 	 *
 	 * UMSEL01 | 00 -> Async USART; 01 -> Sync USART; 10 -> Reserved; 11 -> Master SPI
 	 * UMSEL02 |
@@ -61,25 +61,25 @@ void serial_init()
 	 * UCPOL0
 	 */
 
-       	/* Macros to set baudrate */
+	/* Macros to set baudrate */
 	/* Based on BAUD and F_CPU defines they will set:
 	 * 
-	 * 	UBRRH_VALUE
-	 * 	UBRRL_VALUE
-	 * 	U2X0
+	 *      UBRRH_VALUE
+	 *      UBRRL_VALUE
+	 *      U2X0
 	 */
-	#include <util/setbaud.h>
+#include <util/setbaud.h>
 	UBRR0H = UBRRH_VALUE;
 	UBRR0L = UBRRL_VALUE;
 
-	#if USE_2X
+#if USE_2X
 	UCSR0A |= (1 << U2X0);
-	#else
+#else
 	UCSR0A &= ~(1 << U2X0);
-	#endif
+#endif
 
 	/* Enable transmit and receive. Enable receive interrupts */
-	UCSR0B |= ( 1<<TXEN0 ) | ( 1<<RXEN0 ) | ( 1<<RXCIE0 );
+	UCSR0B |= (1 << TXEN0) | (1 << RXEN0) | (1 << RXCIE0);
 
 }
 
@@ -91,17 +91,15 @@ void serial_init()
  */
 void _serial_send_char(char c)
 {
-	loop_until_bit_is_set(UCSR0A, UDRE0); /* wait until data register is empty. */
-	UDR0 = c; /* send the data */
+	loop_until_bit_is_set(UCSR0A, UDRE0);	/* wait until data register is empty. */
+	UDR0 = c;		/* send the data */
 
 }
 
-void serial_send_str(char * s)
+void serial_send_str(char *s)
 {
-	while(*s)
-	{
-		if(*s == '\n')
-		{
+	while (*s) {
+		if (*s == '\n') {
 			_serial_send_char('\r');
 		}
 		_serial_send_char(*s++);

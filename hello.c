@@ -29,11 +29,10 @@ int distance;
 ISR(USART_RX_vect)
 {
 	buffer[i] = UDR0;
-	if ( buffer[i++] == '\r' )
-	{
+	if (buffer[i++] == '\r') {
 		StrRxFlag = 1;
-		buffer[i-1] = 0x00;
-		i=0;
+		buffer[i - 1] = 0x00;
+		i = 0;
 	}
 }
 
@@ -41,7 +40,8 @@ ISR(USART_RX_vect)
 // define BAUD in makefile
 
 
-void init(void){
+void init(void)
+{
 	// Disable interrupts
 	cli();
 	// Init serial port
@@ -52,22 +52,21 @@ void init(void){
 	sei();
 
 }
+
 int main(void)
 {
 	// Initialize everything
 	init();
 
 	// Main loop
-	while(1)
-	{
+	while (1) {
 		serial_send_str("hola\n");
 		_delay_ms(1000);
-		if(StrRxFlag)
-		{
+		if (StrRxFlag) {
 			// Copy buffer
 			//ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
 			//{
-			for (int j=0; j<20; j++)
+			for (int j = 0; j < 20; j++)
 				str[j] = buffer[j];
 			//}
 			StrRxFlag = 0;
@@ -77,7 +76,7 @@ int main(void)
 		serial_send_str(sonar_query(3));
 		distance = sonar_get_distance(3);
 		serial_send_str("Distance in cm is: ");
-		serial_send_str(itoa(distance,str,10));
+		serial_send_str(itoa(distance, str, 10));
 		serial_send_str("\n");
 	}
 	return 0;
