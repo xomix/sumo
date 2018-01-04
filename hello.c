@@ -61,7 +61,7 @@ int main(void)
 	// Main loop
 	while (1) {
 		serial_send_str("hola\n");
-		_delay_ms(1000);
+		_delay_ms(100);
 		if (StrRxFlag) {
 			// Copy buffer
 			//ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
