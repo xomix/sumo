@@ -14,16 +14,17 @@
 
 #include <avr/io.h>
 #include <util/delay.h>
-#include "serial.h"
-#include "sonar.h"
 #include <util/atomic.h>
 #include <stdlib.h>
+#include "serial.h"
+#include "sonar.h"
 
 volatile int i = 0;
 volatile char buffer[20];
 volatile uint8_t StrRxFlag = 0;
 char str[20];
 int distance;
+int kk;
 
 // Interrupt when RX data on serial port
 ISR(USART_RX_vect)
@@ -47,7 +48,9 @@ void init(void)
 	// Init serial port
 	serial_init();
 	// Init sonar
-	sonar_init(3);
+	sonar_init();
+	// add sonar sensor
+	kk=sonar_add_sensor(&DDRB, &PORTB, PB1);
 	// Enable interrupts
 	sei();
 
@@ -73,8 +76,10 @@ int main(void)
 			serial_send_str(str);
 			serial_send_str("\n");
 		}
-		serial_send_str(sonar_query(3));
-		distance = sonar_get_distance(3);
+		if (kk !=0)
+			serial_send_str("sensor not added!");
+		sonar_query();
+		distance = sonar_get_distance(0);
 		serial_send_str("Distance in cm is: ");
 		serial_send_str(itoa(distance, str, 10));
 		serial_send_str("\n");

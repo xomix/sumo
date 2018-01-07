@@ -8,8 +8,9 @@
 #include <avr/interrupt.h>
 #include <string.h>
 
-void sonar_init(int Tpin);
-char *sonar_query(int Tpin);
+void sonar_init(void);
+int sonar_add_sensor(volatile uint8_t *ddr, volatile uint8_t *port, int pin);
+void sonar_query(void);
 int sonar_get_distance(int Tpin);
 
 /*      Speed of sound in m/s */
@@ -67,4 +68,11 @@ int sonar_get_distance(int Tpin);
 #error SONAR_TICKS_TO_CM cannot be 0
 #endif
 
+#define MAX_SONAR_SENSORS 3
+
+struct sonar_sensor {
+	volatile uint8_t *port;
+	int pin;
+	volatile uint8_t pwidth;
+};
 #endif /* SONAR_H_ Include Guard */

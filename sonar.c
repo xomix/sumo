@@ -1,7 +1,6 @@
 /*
  * sonar.c
  * 	sonar api with interrupts
- *
  */
 
 #include "sonar.h"
@@ -59,12 +58,13 @@
  *
  */
 
-char message[20] = "Not trigger\n";
-volatile uint16_t pwidth = 0;
-volatile uint16_t last = 0;
 volatile uint8_t edge = 0;
+volatile uint8_t pwidth = 0;
+volatile uint8_t current_sensor_index = 0;
+static uint8_t sonar_sensors_count = 0;
+static struct sonar_sensor sonar_sensors[MAX_SONAR_SENSORS];
 
-void sonar_init(int Tpin)
+void sonar_init(void)
 {
 	/* Initializes timer1 and output pin for sonar */
 
@@ -134,49 +134,74 @@ void sonar_init(int Tpin)
 
 }
 
-char *sonar_query(int Tpin)
+int sonar_add_sensor(volatile uint8_t *ddr, volatile uint8_t *port, int pin)
 {
-	// Sends trigger in selected pin if it is not already mesuring.
-	//
-	// First map the arduino pin to atmel pin
+	int retcode = 1;
+	volatile uint8_t tmp = 0;
 
-	if (Tpin >= 0 && Tpin < 8) {
-		// Port D
-	} else if (Tpin > 8 && Tpin < 14) {
-		// Port B. We exclude pin8, as is used as echo pin
+	if (sonar_sensors_count < MAX_SONAR_SENSORS) {
+		// Set pin direction to output
+		*ddr |= _BV(pin);
+		// Keep the sensor for measuring
+		struct sonar_sensor sensor = {
+			port,
+			pin,
+			tmp };
+		sonar_sensors[sonar_sensors_count] = sensor;
+		sonar_sensors_count++;
+		retcode = 0;
+	} else {
+		retcode = 1;
 	}
-	// check if trigger already sent (timer running)
-	if (!(TCCR1B & (1 << CS10))) {
-		// Do the HC-SR104 Trigger
-		strcpy(message, "Triggering...\n");
 
-		// Set trigger pin low
-		PORTB &= ~(_BV(PB1));
+	return retcode;
+}
+
+void sonar_query(void)
+{
+	/*
+	 * Sends trigger in next available pin when there is no measurement
+	 * ongoing
+	 */
+
+	struct sonar_sensor current;
+
+	if (sonar_sensors_count == 0)
+		return; // No sensors available
+
+	// If no measurement ongoing (timer1 stoped)
+	if (!(TCCR1B & (1 << CS10))) {
+		// Set the current sensor
+		current = sonar_sensors[current_sensor_index];
+
+		// Do the HC-SR104 Trigger
+
+		*current.port &= ~(_BV(current.pin)); // Set trigger pin low
 		_delay_ms(2);
 
-		// Set trigger pin high
-		// Wait 10 ms
-		PORTB |= _BV(PB1);
+		*current.port |= _BV(current.pin); // Set trigger pin high
 		_delay_ms(10);
 
-		// Set trigger pin low
-		PORTB &= ~(_BV(PB1));
+		*current.port &= ~(_BV(current.pin)); // Set trigger pin low
 
 		TCCR1B |= (1 << ICES1);	// Set interrupt to capture rising edge
 		TCCR1B |= (_BV(CS11) | _BV(CS10));	// Start timer1 with 64 prescaler
 		TIMSK1 |= _BV(ICIE1);	// enable input capture interrupt
 	}
-
-	return message;
 }
 
-int sonar_get_distance(int Tpin)
+int sonar_get_distance(int index)
 {
 	/*
 	 *  returns distance in cm for selected sensor
 	 */
 	int distance;
-	distance = last / SONAR_TICKS_TO_CM;	/* last is in ticks. */
+	if (index < 0 || index > sonar_sensors_count){
+		distance = -1; // error, nonexistent sensor
+	} else {
+		//distance = (sonar_sensors[index]).pwidth / SONAR_TICKS_TO_CM;
+		distance = sonar_sensors[index].pwidth;
+	}
 	return distance;
 }
 
@@ -191,13 +216,17 @@ ISR(TIMER1_CAPT_vect)
 		TCCR1B &= ~(_BV(ICES1));	// Set interrupt to capture falling edge
 		//TIFR1 &= ~(_BV(ICF1)); // Reset the interrupt capture flag
 	} else {
-		pwidth = ICR1;	// Copy elapsed time. When using interrupts TCNT1 is copied automatically to ICR1
-		if (pwidth < SONAR_MAX_RANGE_TICKS && pwidth > SONAR_MIN_RANGE_TICKS)
-			last = pwidth;
-		else
-			last = 0; // No valid measure
-		TCCR1B &= ~(_BV(CS10));	// stop timer1 to signal that measure is done.
-		TCNT1 = 0;	// Reset timer
+		pwidth = ICR1;	// Copy elapsed time. When using input capture interrupt TCNT1 is copied automatically to ICR1
+		if (pwidth > SONAR_MAX_RANGE_TICKS || pwidth > SONAR_MIN_RANGE_TICKS)
+			pwidth = 0; // No valid measure
+		// Copy measure
+		sonar_sensors[current_sensor_index].pwidth = pwidth;
+		// Update current sensor index value
+		current_sensor_index++;
+		if (current_sensor_index == sonar_sensors_count)
+			current_sensor_index = 0;
+		// Stop and reset timer to signal that measure is done
+		{ TCCR1B &= ~(_BV(CS10)); TCNT1 = 0; }
 		//TIFR1 &= ~(_BV(ICF1)); // Reset the interrupt capture flag
 	}
 	edge = !edge;
