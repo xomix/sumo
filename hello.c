@@ -23,8 +23,7 @@ volatile int i = 0;
 volatile char buffer[20];
 volatile uint8_t StrRxFlag = 0;
 char str[20];
-int distance;
-int kk;
+int distance,distance1;
 
 // Interrupt when RX data on serial port
 ISR(USART_RX_vect)
@@ -50,7 +49,8 @@ void init(void)
 	// Init sonar
 	sonar_init();
 	// add sonar sensor
-	kk=sonar_add_sensor(&DDRB, &PORTB, PB1);
+	sonar_add_sensor(&DDRB, &PORTB, PB1);
+	sonar_add_sensor(&DDRB, &PORTB, PB1);
 	// Enable interrupts
 	sei();
 
@@ -64,7 +64,7 @@ int main(void)
 	// Main loop
 	while (1) {
 		serial_send_str("hola\n");
-		_delay_ms(100);
+//		_delay_ms(100);
 		if (StrRxFlag) {
 			// Copy buffer
 			//ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
@@ -76,12 +76,14 @@ int main(void)
 			serial_send_str(str);
 			serial_send_str("\n");
 		}
-		if (kk !=0)
-			serial_send_str("sensor not added!");
 		sonar_query();
 		distance = sonar_get_distance(0);
-		serial_send_str("Distance in cm is: ");
+		distance1 = sonar_get_distance(1);
+		serial_send_str("Distance1 in cm is: ");
 		serial_send_str(itoa(distance, str, 10));
+		serial_send_str("\n");
+		serial_send_str("Distance2 in cm is: ");
+		serial_send_str(itoa(distance1, str, 10));
 		serial_send_str("\n");
 	}
 	return 0;

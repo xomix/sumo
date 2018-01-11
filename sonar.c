@@ -3,53 +3,11 @@
  * 	sonar api with interrupts
  */
 
-#include "sonar.h"
-
-// Debug preprocessor
-#define XSTR(x) STR(x)
-#define STR(x) #x
-
-
-// Pseudo code
-//
-// init:
-// Get pin trigger and echo parameters
-// Set trigger pin as output
-// Set echo pin as input
-// Set stop = stop = 0
-//
-// start:
-//      Loop while stop != 1
-//      Send 14us pulse to trigger
-//      Program interrupt for down->up change in echo pin
-//      On interrupt:
-//              keep timestamp "up"
-//              Program interrupt up->down change in echo pin
-//              On interrupt:
-//                      keep timestamp "down"
-//                      pulse_time = down - up
-//
-// distance:
-//      - max distance
-//      pulse_time * const sound_speed(in cm/tick / 2
-//
-// stop:
-//      set stop = 1
-//
-// Measurement of an external signal’s duty cycle requires that the trigger edge is changed after each
-// capture. Changing the edge sensing must be done as early as possible after the ICR1 Register has been
-// read. After a change of the edge, the Input Capture Flag (ICF) must be cleared by software (writing a
-// logical one to the I/O bit location).
-//
-// Inspired from:
-//       http://www.avrfreaks.net/forum/newbie-having-trouble-input-capture-interrupts-atmega-328p
-//       http://www.avrfreaks.net/forum/atmega328p-icp1
-//
-//
-//
-
-
 /*
+ * Inspired from:
+ *       http://www.avrfreaks.net/forum/newbie-having-trouble-input-capture-interrupts-atmega-328p
+ *       http://www.avrfreaks.net/forum/atmega328p-icp1
+ *
  * We will set timer1 with 64 preescaler, and unmask interrupts on input capture.
  * Initially interrupt is on rising edge. On interrupt, we change to falling edge.
  * On interrupt, timer1 value has pulse width.
@@ -58,11 +16,81 @@
  *
  */
 
+#include "sonar.h"
+#include <avr/io.h>
+#include <util/delay.h>
+#include <avr/interrupt.h>
+#include <string.h>
+
+/*      Speed of sound in m/s */
+#define SONAR_SOUND_SPEED 343UL
+
+/*      MAX RANGE in meters is 1 meter. */
+#define MAX_RANGE_METERS 1UL
+
+/*      MIN RANGE in cm is 2 cms. */
+#define MIN_RANGE_CM 2UL
+
+/* Timer1 prescaler */
+#define PRESCALER 64UL
+
+/*
+ * SONAR_MAX_RANGE_TICKS is time in ticks for 2 * MAX_RANGE_METERS meters distance
+ *      Go and come back means 2 * MAX_RANGE_METERS in meters.
+ *      Time elapsed for an object in range limit is 2 * MAX_RANGE_METERS / SONAR_SOUND_SPEED seconds
+ *              ~ 5.831 ms
+ *      We will use 64 as prescaler, which means 1 tick is 64 / F_CPU seconds
+ *              = 0.004 ms (F_CPU = 16Mhz)
+ *      Number of ticks max is then 2 * MAX_RANGE_METERS * F_CPU / SONAR_SOUND_SPEED / PRESCALER
+ *              ~ 1458 ticks
+ *      It helps filtering out objects further than 1 meter
+ * #define SONAR_MAX_RANGE 1458
+ */
+#define SONAR_MAX_RANGE_TICKS ((2UL * (MAX_RANGE_METERS) * (F_CPU) / (SONAR_SOUND_SPEED) / (PRESCALER)) + 1 )
+/*
+ * SONAR_MIN_RANGE is time in ticks for 2 * MIN_RANGE_CM cm distance
+ *      2 * MIN_RANGE_CM (go - come back)
+ *      Time elapsed for an object in range limit is ( 2 * MIN_RANGE_CM / 100 ) / SONAR_SOUND_SPEED seconds
+ *              ~ 5.831 ms
+ *      We will use 64 as prescaler, which means 1 tick is 64 / F_CPU seconds
+ *              = 0.004 ms (F_CPU = 16Mhz)
+ *      Number of ticks min is then 2 * MIN_RANGE_CM * F_CPU / 100 / SONAR_SOUND_SPEED / 64
+ *              ~ 29
+ *      It helps filtering out objects nearer than 2 cm
+ * #define SONAR_MIN_RANGE 29
+ */
+#define SONAR_MIN_RANGE_TICKS ((2UL * (MIN_RANGE_CM) * (F_CPU) / 100UL / (SONAR_SOUND_SPEED) / (PRESCALER)) - 1 )
+/*
+ * SONAR_TICKS_TO_CM
+ *      1 tick ~ 0.004 ms
+ *      343 m/s
+ *      One tick is 64 / F_CPU seconds
+ *      Speed of sound is 343 m/s
+ *      Sound does twice the distance
+ *      SONAR_TICKS_TO_CM is 343 * 100 * 64 / ( F_CPU * 2 )
+ *              ~ 14.58 or 0.0686
+ * #define SONAR_TICKS_TO_CM 14
+ */
+#define SONAR_TICKS_TO_CM ((F_CPU * 2UL) / ((SONAR_SOUND_SPEED) * 100UL * (PRESCALER)))
+/* We use SONAR_TICKS_TO_CM in a division, so protect division by 0 error */
+#if SONAR_TICKS_TO_CM == 0
+#error SONAR_TICKS_TO_CM cannot be 0
+#endif
+
+#define MAX_SONAR_SENSORS 3
+
+struct sonar_sensor {
+	volatile uint8_t *port;
+	int pin;
+	volatile uint8_t pwidth;
+};
+
 volatile uint8_t edge = 0;
 volatile uint8_t pwidth = 0;
 volatile uint8_t current_sensor_index = 0;
 static uint8_t sonar_sensors_count = 0;
 static struct sonar_sensor sonar_sensors[MAX_SONAR_SENSORS];
+
 
 void sonar_init(void)
 {
@@ -123,10 +151,6 @@ void sonar_init(void)
 	TCCR1A = 0x00;		// initialise High byte to zero
 	TCCR1B = 0x00;		// initialise Mid byte to zero
 	TCCR1C = 0x00;		// initialise Low byte to zero
-	// Set trigger pin as output
-	// TODO(jaume): Map arduino uno pin to atmega328p pin
-	// Uses pin9 (pb1) temporary
-	DDRB |= _BV(PB1);
 
 	// Set echo pin as input with internal pull-up
 	DDRB &= ~(_BV(PB0));
@@ -137,18 +161,24 @@ void sonar_init(void)
 int sonar_add_sensor(volatile uint8_t *ddr, volatile uint8_t *port, int pin)
 {
 	int retcode = 1;
-	volatile uint8_t tmp = 0;
 
 	if (sonar_sensors_count < MAX_SONAR_SENSORS) {
 		// Set pin direction to output
 		*ddr |= _BV(pin);
 		// Keep the sensor for measuring
+		/*
+		 *
 		struct sonar_sensor sensor = {
 			port,
 			pin,
 			tmp };
 		sonar_sensors[sonar_sensors_count] = sensor;
+		*/
+		sonar_sensors[sonar_sensors_count].port = port;
+		sonar_sensors[sonar_sensors_count].pin = pin;
+		sonar_sensors[sonar_sensors_count].pwidth = 0;
 		sonar_sensors_count++;
+		*port &= ~(_BV(pin)); // Set trigger pin low
 		retcode = 0;
 	} else {
 		retcode = 1;
@@ -157,7 +187,7 @@ int sonar_add_sensor(volatile uint8_t *ddr, volatile uint8_t *port, int pin)
 	return retcode;
 }
 
-void sonar_query(void)
+void sonar_query()
 {
 	/*
 	 * Sends trigger in next available pin when there is no measurement
@@ -175,12 +205,8 @@ void sonar_query(void)
 		current = sonar_sensors[current_sensor_index];
 
 		// Do the HC-SR104 Trigger
-
-		*current.port &= ~(_BV(current.pin)); // Set trigger pin low
-		_delay_ms(2);
-
 		*current.port |= _BV(current.pin); // Set trigger pin high
-		_delay_ms(10);
+		_delay_us(10);
 
 		*current.port &= ~(_BV(current.pin)); // Set trigger pin low
 
@@ -199,8 +225,8 @@ int sonar_get_distance(int index)
 	if (index < 0 || index > sonar_sensors_count){
 		distance = -1; // error, nonexistent sensor
 	} else {
-		//distance = (sonar_sensors[index]).pwidth / SONAR_TICKS_TO_CM;
-		distance = sonar_sensors[index].pwidth;
+		distance = (sonar_sensors[index]).pwidth / SONAR_TICKS_TO_CM;
+		//distance = sonar_sensors[index].pwidth;
 	}
 	return distance;
 }
@@ -217,7 +243,7 @@ ISR(TIMER1_CAPT_vect)
 		//TIFR1 &= ~(_BV(ICF1)); // Reset the interrupt capture flag
 	} else {
 		pwidth = ICR1;	// Copy elapsed time. When using input capture interrupt TCNT1 is copied automatically to ICR1
-		if (pwidth > SONAR_MAX_RANGE_TICKS || pwidth > SONAR_MIN_RANGE_TICKS)
+		if (pwidth > SONAR_MAX_RANGE_TICKS || pwidth < SONAR_MIN_RANGE_TICKS)
 			pwidth = 0; // No valid measure
 		// Copy measure
 		sonar_sensors[current_sensor_index].pwidth = pwidth;
@@ -226,7 +252,7 @@ ISR(TIMER1_CAPT_vect)
 		if (current_sensor_index == sonar_sensors_count)
 			current_sensor_index = 0;
 		// Stop and reset timer to signal that measure is done
-		{ TCCR1B &= ~(_BV(CS10)); TCNT1 = 0; }
+		{ TCCR1B &= ~(_BV(CS12) | _BV(CS11) | _BV(CS10)); TCNT1 = 0; }
 		//TIFR1 &= ~(_BV(ICF1)); // Reset the interrupt capture flag
 	}
 	edge = !edge;
