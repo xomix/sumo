@@ -10,6 +10,5 @@
 //#include <avr/interrupt.h>
 
 void serial_init();
-void _serial_send_char(char c);
 void serial_send_str(char *s);
 #endif

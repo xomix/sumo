@@ -85,9 +85,9 @@ struct sonar_sensor {
 	volatile uint8_t pwidth;
 };
 
-volatile uint8_t edge = 0;
-volatile uint8_t pwidth = 0;
-volatile uint8_t current_sensor_index = 0;
+static volatile uint8_t edge = 0;
+static volatile uint8_t pwidth = 0;
+static volatile uint8_t current_sensor_index = 0;
 static uint8_t sonar_sensors_count = 0;
 static struct sonar_sensor sonar_sensors[MAX_SONAR_SENSORS];
 

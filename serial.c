@@ -1,9 +1,14 @@
-/* 
+/*
  * Serial.c
  * 		Brings serial port utilities
  *
  */
 #include "serial.h"
+#include <avr/io.h>
+
+void serial_init();
+void serial_send_str(char *s);
+
 
 void serial_init()
 {
@@ -89,7 +94,7 @@ void serial_init()
  * writes one char when buffer ready to send
  * Blocking send
  */
-void _serial_send_char(char c)
+static void serial_send_char(char c)
 {
 	loop_until_bit_is_set(UCSR0A, UDRE0);	/* wait until data register is empty. */
 	UDR0 = c;		/* send the data */
@@ -100,8 +105,8 @@ void serial_send_str(char *s)
 {
 	while (*s) {
 		if (*s == '\n') {
-			_serial_send_char('\r');
+			serial_send_char('\r');
 		}
-		_serial_send_char(*s++);
+		serial_send_char(*s++);
 	}
 }
