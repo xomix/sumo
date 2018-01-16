@@ -16,13 +16,16 @@
 #include <util/delay.h>
 #include <util/atomic.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "serial.h"
 #include "sonar.h"
+#include "sharpdistance.h"
 
 volatile int i = 0;
 volatile char buffer[20];
 volatile uint8_t StrRxFlag = 0;
 char str[20];
+char message[50];
 int distance,distance1;
 
 // Interrupt when RX data on serial port
@@ -51,9 +54,12 @@ void init(void)
 	// add sonar sensor
 	sonar_add_sensor(&DDRB, &PORTB, PB1);
 	sonar_add_sensor(&DDRB, &PORTB, PB1);
+	// Init sharp sensor
+	sharp_init();
+	// add sharp sensor
+	sharp_add_sensor(PB2);
 	// Enable interrupts
 	sei();
-
 }
 
 int main(void)
@@ -77,6 +83,8 @@ int main(void)
 			serial_send_str("\n");
 		}
 		sonar_query();
+		sprintf(message,"Sharp distance %d\n",sharp_get_distance(0));
+		serial_send_str(message);
 		distance = sonar_get_distance(0);
 		distance1 = sonar_get_distance(1);
 		serial_send_str("Distance1 in cm is: ");
