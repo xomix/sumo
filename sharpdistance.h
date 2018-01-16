@@ -6,8 +6,7 @@
 #include <stdint.h>
 
 void sharp_init(void);
-int sharp_add_sensor(unsigned int pin);
-int sharp_query(void);
-int sharp_distance(int idx);
+uint8_t sharp_add_sensor(uint8_t pin);
+uint16_t sharp_get_distance(uint8_t idx);
 
 #endif /* SHARPDISTANCE_H_ Include Guard */

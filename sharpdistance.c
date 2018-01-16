@@ -8,32 +8,35 @@
  *       http://www.avrfreaks.net/forum/tut-c-newbies-guide-avr-adc?name=PNphpBB2&file=viewtopic&t=56429
  *       http://www.electronics-base.com/avr-tutorials/analog-digital-converter-adc/102-avr-adc-inputs-scanning-example
  *
- * We will use "free-running" analog2digital conversion, interrupt driven.
- * When a query is done, we will switch to next sensor.
+ * We will use analog2digital conversion, interrupt driven.
+ * When a conversion is done, we will switch to next sensor and start another
+ * conversion.
  * When we have a conversion (distance mesure), we have to convert read volts to cm.
  *
  */
 
-#include "sharpdistance.h"
+/* TODO(Jaume): keep multiple values per sensor and filter them when returning distance */
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <util/delay.h>
+#include "sharpdistance.h"
 
 /* Max number of sensors connected */
-#define MAX_SHARPDISTANCE_SENSORS 4
+#define MAX_SHARPDISTANCE_SENSORS 8
 
 /* Max number of input pins for conversion */
-#define MAX_ADC_INPUTS 7
+#define MAX_ADC_INPUTS 8
 
 /* Struct to hold sensor parameters and measurements */
 struct sharp_sensor {
-	unsigned int pin;
-	volatile uint8_t voltage;
+	uint8_t pin;
+	volatile uint16_t voltage;
 };
 
 static uint8_t sharp_sensors_count = 0; /* Total number of defined sensors */
 volatile uint8_t sharp_current_sensor_idx; /* index in array of sensors we are measuring */
-volatile uint8_t changed = 0; /* Flag to signal changed channel(pin) to convert */
-volatile uint8_t conversion = 0; /* Flag to signal changed channel(pin) to convert */
+volatile uint16_t conversion = 0; /* Converted value in interrupt handler */
 static struct sharp_sensor sharp_sensors[MAX_SHARPDISTANCE_SENSORS];
 
 /*
@@ -105,58 +108,46 @@ void sharp_init(void)
 
 	ADCSRA |= (_BV(ADPS2)|_BV(ADPS1)|_BV(ADPS0)); /* 128 prescaler, with 16MHz makes 125KHz ADC Clock */
 	ADMUX |= _BV(REFS0); /* Set reference voltage to AVCC */
-	ADMUX |= _BV(ADLAR); /* Set left align in preparation to use only 8bits conversion */
 	PRR &= ~(_BV(PRADC)); /* Disable power reduction */
-	ADCSRA &= ~(_BV(ADTS2)|_BV(ADTS1)|_BV(ADTS0)); /* Free Running mode */
 	ADCSRA |= _BV(ADEN); /* Enable Conversions */
-	ADCSRA |= _BV(ADSC); /* Start conversions */
 	ADCSRA |= _BV(ADIE); /* Enable conversions Interrupts */
 
 }
 
-int sharp_add_sensor(unsigned int pin)
+uint8_t sharp_add_sensor(uint8_t pin)
 {
 	/*
 	 * Copy sensor variables to array of sensors
 	 */
 
-	if (pin > MAX_ADC_INPUTS  || sharp_sensors_count == MAX_SHARPDISTANCE_SENSORS)
+	/* Verify parameter */
+	if (pin >= MAX_ADC_INPUTS  || sharp_sensors_count == MAX_SHARPDISTANCE_SENSORS)
 		return 1;
 
 	sharp_sensors[sharp_sensors_count].pin = pin ;
 	sharp_sensors[sharp_sensors_count].voltage = 0 ;
-	sharp_sensors_count++;
 
-	changed = 0; /* Signal the ISR next conversion is invalid */
+	/* Update counter and start conversions if first sensor */
+	if (++sharp_sensors_count == 1 )
+		ADCSRA |= _BV(ADSC); /* Start conversions */
 
 	return 0;
 }
 
-int sharp_query(void)
-{
-	int retcode =1;
-	/* TODO(Jaume): Cal protegir amb un atomic block aquesta adició? */
-	sharp_current_sensor_idx++;
-	if (sharp_current_sensor_idx == sharp_sensors_count)
-		sharp_current_sensor_idx = 0;
-	changed = 0; /* Signal the ISR next conversion is invalid */
-	 /* Select new sensor in the MUX */
-	/* Keep high 4 bits, only change de mux selection */
-	ADMUX &= (0xF0 | (sharp_sensors[sharp_current_sensor_idx].pin));
-	retcode = 0;
-	return retcode;
-}
-
-uint16_t sharp_get_distance(int idx)
+uint16_t sharp_get_distance(uint8_t idx)
 {
 	/*
 	 *  returns distance in cm for selected sensor
 	 */
-	int distance=0;
+	uint16_t distance=0;
 
 	if (idx >= 0 && idx < sharp_sensors_count) {
-		/* TODO(jaume): Convert voltage value to distance en cm */
-		distance = sharp_sensors[idx].voltage;
+		/* TODO(Jaume): Convert voltage value to distance en cm */
+		/* Distance is inverse of voltage, resolution is 10 bits */
+		/* TODO(Jaume): Verify if atomic block is necessary, voltage is
+		 * 16 bits (2 registers) and is modified in ISR
+		 */
+		distance = 1024 - sharp_sensors[idx].voltage;
 	}
 
 	return distance;
@@ -164,20 +155,31 @@ uint16_t sharp_get_distance(int idx)
 
 /* Interrupt handling */
 /*
- * If we have just changed muxer channel, discard conversion
- *	and set flag to OK.
- * Verify read channel in muxer
  * copy converted value to sensor structure
- * set new sensor on sensor array
+ * select new conversion input
+ * select new sensor on sensor array
+ * start new conversion
  */
 
 ISR(ADC_vect)
 {
-	conversion = ADCH; /* Get only 8 bits precision */
-	if (changed || sharp_sensors_count) { /* Discard first conversion after mux change */
-		conversion = 0;
-		changed = ~changed;
-	} else {
-		sharp_sensors[sharp_current_sensor_idx].voltage = conversion;
-	}
+	conversion = ADCW; /* This is AVR-LIBC specific to copy 16 bits at once */
+
+	/* Copy conversion value */
+	sharp_sensors[sharp_current_sensor_idx].voltage = conversion;
+
+	/* Update array index */
+	if (++sharp_current_sensor_idx == sharp_sensors_count)
+		sharp_current_sensor_idx = 0;
+
+	/* Select new input for next conversion,
+	 *	keeping 4 high bits as in intialisation
+	 */
+	ADMUX = ( _BV(REFS0) | sharp_sensors[sharp_current_sensor_idx].pin );
+
+	/* Wait to stabilize input */
+	_delay_us(10);
+
+	/* Start new conversion */
+	ADCSRA |= _BV(ADSC);
 }
