@@ -20,7 +20,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
-#include <string.h>
+#include <util/atomic.h>
 
 /*      Speed of sound in m/s */
 #define SONAR_SOUND_SPEED 343UL
@@ -201,6 +201,7 @@ void sonar_query()
 
 	// If no measurement ongoing (timer1 stoped)
 	if (!(TCCR1B & (1 << CS10))) {
+		/* Assignements here are safe, no interrupts with timer1 stopped */
 		// Set the current sensor
 		current = sonar_sensors[current_sensor_index];
 
@@ -222,11 +223,12 @@ int sonar_get_distance(int index)
 	 *  returns distance in cm for selected sensor
 	 */
 	int distance;
-	if (index < 0 || index > sonar_sensors_count){
+	if (index < 0 || index > sonar_sensors_count) {
 		distance = -1; // error, nonexistent sensor
 	} else {
-		distance = (sonar_sensors[index]).pwidth / SONAR_TICKS_TO_CM;
-		//distance = sonar_sensors[index].pwidth;
+		ATOMIC_BLOCK(ATOMIC_FORCEON) {
+			distance = (sonar_sensors[index]).pwidth / SONAR_TICKS_TO_CM;
+		}
 	}
 	return distance;
 }

@@ -11,9 +11,9 @@ CFLAGS	Makefile	/^CFLAGS=-Os -DF_CPU=16000000UL -DBAUD=${BAUD}UL -mmcu=${MCU} -W
 ISR	hello.c	/^ISR(USART_RX_vect)$/;"	f
 ISR	sharpdistance.c	/^ISR(ADC_vect)$/;"	f
 ISR	sonar.c	/^ISR(TIMER1_CAPT_vect)$/;"	f
-MAX_ADC_INPUTS	sharpdistance.c	29;"	d	file:
+MAX_ADC_INPUTS	sharpdistance.c	32;"	d	file:
 MAX_RANGE_METERS	sonar.c	29;"	d	file:
-MAX_SHARPDISTANCE_SENSORS	sharpdistance.c	26;"	d	file:
+MAX_SHARPDISTANCE_SENSORS	sharpdistance.c	29;"	d	file:
 MAX_SONAR_SENSORS	sonar.c	80;"	d	file:
 MCU	Makefile	/^MCU=atmega328p$/;"	m
 MIN_RANGE_CM	sonar.c	32;"	d	file:
@@ -42,8 +42,8 @@ message	hello.c	/^char message[50];$/;"	v
 pin	sharpdistance.c	/^	uint8_t pin;$/;"	m	struct:sharp_sensor	file:
 pin	sonar.c	/^	int pin;$/;"	m	struct:sonar_sensor	file:
 port	sonar.c	/^	volatile uint8_t *port;$/;"	m	struct:sonar_sensor	file:
-pwidth	sonar.c	/^	volatile uint8_t pwidth;$/;"	m	struct:sonar_sensor	file:
-pwidth	sonar.c	/^static volatile uint8_t pwidth = 0;$/;"	v	file:
+pwidth	sonar.c	/^	volatile uint16_t pwidth;$/;"	m	struct:sonar_sensor	file:
+pwidth	sonar.c	/^static volatile uint16_t pwidth = 0;$/;"	v	file:
 serial_init	serial.c	/^void serial_init()$/;"	f
 serial_send_char	serial.c	/^static void serial_send_char(char c)$/;"	f	file:
 serial_send_str	serial.c	/^void serial_send_str(char *s)$/;"	f
