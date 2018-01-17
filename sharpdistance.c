@@ -12,6 +12,8 @@
  * When a conversion is done, we will switch to next sensor and start another
  * conversion.
  * When we have a conversion (distance mesure), we have to convert read volts to cm.
+ * This last conversion is not coded, because sensor distance is a complicated function
+ * of sensor voltage output.
  *
  */
 
@@ -144,10 +146,11 @@ uint16_t sharp_get_distance(uint8_t idx)
 	if (idx >= 0 && idx < sharp_sensors_count) {
 		/* TODO(Jaume): Convert voltage value to distance en cm */
 		/* Distance is inverse of voltage, resolution is 10 bits */
-		/* TODO(Jaume): Verify if atomic block is necessary, voltage is
-		 * 16 bits (2 registers) and is modified in ISR
-		 */
-		distance = 1024 - sharp_sensors[idx].voltage;
+
+		/* Voltage is 16 bits (2 registers) and is modified in ISR */
+		ATOMIC_BLOCK(ATOMIC_FORCEON) {
+			distance = 1024 - sharp_sensors[idx].voltage;
+		}
 	}
 
 	return distance;
@@ -178,7 +181,8 @@ ISR(ADC_vect)
 	ADMUX = ( _BV(REFS0) | sharp_sensors[sharp_current_sensor_idx].pin );
 
 	/* Wait to stabilize input */
-	_delay_us(10);
+	/* TODO(jaume): verify this delay is necessary, at least is ugly */
+	_delay_us(2);
 
 	/* Start new conversion */
 	ADCSRA |= _BV(ADSC);
