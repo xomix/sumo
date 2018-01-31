@@ -4,34 +4,44 @@
 !_TAG_PROGRAM_NAME	Exuberant Ctags	//
 !_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
 !_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+ADC_RESOLUTION	analog.c	37;"	d	file:
+ANALOG_H_	analog.h	5;"	d
 BAUD	Makefile	/^BAUD=9600$/;"	m
 BIN	Makefile	/^BIN=hello$/;"	m
 CC	Makefile	/^CC=avr-gcc$/;"	m
 CFLAGS	Makefile	/^CFLAGS=-Os -DF_CPU=16000000UL -DBAUD=${BAUD}UL -mmcu=${MCU} -Wall$/;"	m
 DRIVER_H_	driver.h	2;"	d
+ISR	analog.c	/^ISR(ADC_vect)$/;"	f
 ISR	hello.c	/^ISR(USART_RX_vect)$/;"	f
-ISR	sharpdistance.c	/^ISR(ADC_vect)$/;"	f
 ISR	sonar.c	/^ISR(TIMER1_CAPT_vect)$/;"	f
-MAX_ADC_INPUTS	sharpdistance.c	32;"	d	file:
+MAX_ADC_INPUTS	analog.c	32;"	d	file:
+MAX_ANALOG_SENSORS	analog.c	29;"	d	file:
 MAX_RANGE_METERS	sonar.c	29;"	d	file:
-MAX_SHARPDISTANCE_SENSORS	sharpdistance.c	29;"	d	file:
 MAX_SONAR_SENSORS	sonar.c	80;"	d	file:
 MCU	Makefile	/^MCU=atmega328p$/;"	m
 MIN_RANGE_CM	sonar.c	32;"	d	file:
 OBJCOPY	Makefile	/^OBJCOPY=avr-objcopy$/;"	m
-OBJS	Makefile	/^OBJS=hello.o serial.o sonar.o sharpdistance.o driver.o$/;"	m
+OBJS	Makefile	/^OBJS=hello.o serial.o sonar.o driver.o analog.o$/;"	m
 PORT	Makefile	/^PORT=\/dev\/ttyACM0$/;"	m
 PRESCALER	sonar.c	35;"	d	file:
 SERIAL_H_	serial.h	7;"	d
-SHARPDISTANCE_H_	sharpdistance.h	5;"	d
 SONAR_H_	sonar.h	5;"	d
 SONAR_MAX_RANGE_TICKS	sonar.c	49;"	d	file:
 SONAR_MIN_RANGE_TICKS	sonar.c	62;"	d	file:
 SONAR_SOUND_SPEED	sonar.c	26;"	d	file:
 SONAR_TICKS_TO_CM	sonar.c	74;"	d	file:
 StrRxFlag	hello.c	/^volatile uint8_t StrRxFlag = 0;$/;"	v
+V_REF	analog.c	35;"	d	file:
+analog_add_sensor	analog.c	/^int8_t analog_add_sensor(uint8_t pin)$/;"	f
+analog_current_sensor_idx	analog.c	/^volatile uint8_t analog_current_sensor_idx; \/* index in array of sensors we are measuring *\/$/;"	v
+analog_init	analog.c	/^void analog_init(void)$/;"	f
+analog_read	analog.c	/^uint16_t analog_read(uint8_t idx)$/;"	f
+analog_sensor	analog.c	/^struct analog_sensor {$/;"	s	file:
+analog_sensors	analog.c	/^static struct analog_sensor analog_sensors[MAX_ANALOG_SENSORS];$/;"	v	typeref:struct:analog_sensor	file:
+analog_sensors_count	analog.c	/^static uint8_t analog_sensors_count = 0; \/* Total number of defined sensors *\/$/;"	v	file:
+analog_voltage	analog.c	/^uint16_t analog_voltage(uint8_t idx)$/;"	f
 buffer	hello.c	/^volatile char buffer[20];$/;"	v
-conversion	sharpdistance.c	/^volatile uint16_t conversion = 0; \/* Converted value in interrupt handler *\/$/;"	v
+conversion	analog.c	/^volatile uint16_t conversion = 0; \/* Converted value in interrupt handler *\/$/;"	v
 current_sensor_index	sonar.c	/^static volatile uint8_t current_sensor_index = 0;$/;"	v	file:
 distance	hello.c	/^int distance,distance1;$/;"	v
 distance1	hello.c	/^int distance,distance1;$/;"	v
@@ -43,8 +53,9 @@ edge	sonar.c	/^static volatile uint8_t edge = 0;$/;"	v	file:
 i	hello.c	/^volatile int i = 0;$/;"	v
 init	hello.c	/^void init(void)$/;"	f
 main	hello.c	/^int main(void)$/;"	f
+measure	analog.c	/^	volatile uint16_t measure;$/;"	m	struct:analog_sensor	file:
 message	hello.c	/^char message[50];$/;"	v
-pin	sharpdistance.c	/^	uint8_t pin;$/;"	m	struct:sharp_sensor	file:
+pin	analog.c	/^	uint8_t pin;$/;"	m	struct:analog_sensor	file:
 pin	sonar.c	/^	int pin;$/;"	m	struct:sonar_sensor	file:
 port	sonar.c	/^	volatile uint8_t *port;$/;"	m	struct:sonar_sensor	file:
 pwidth	sonar.c	/^	volatile uint16_t pwidth;$/;"	m	struct:sonar_sensor	file:
@@ -52,13 +63,6 @@ pwidth	sonar.c	/^static volatile uint16_t pwidth = 0;$/;"	v	file:
 serial_init	serial.c	/^void serial_init()$/;"	f
 serial_send_char	serial.c	/^static void serial_send_char(char c)$/;"	f	file:
 serial_send_str	serial.c	/^void serial_send_str(char *s)$/;"	f
-sharp_add_sensor	sharpdistance.c	/^uint8_t sharp_add_sensor(uint8_t pin)$/;"	f
-sharp_current_sensor_idx	sharpdistance.c	/^volatile uint8_t sharp_current_sensor_idx; \/* index in array of sensors we are measuring *\/$/;"	v
-sharp_get_distance	sharpdistance.c	/^uint16_t sharp_get_distance(uint8_t idx)$/;"	f
-sharp_init	sharpdistance.c	/^void sharp_init(void)$/;"	f
-sharp_sensor	sharpdistance.c	/^struct sharp_sensor {$/;"	s	file:
-sharp_sensors	sharpdistance.c	/^static struct sharp_sensor sharp_sensors[MAX_SHARPDISTANCE_SENSORS];$/;"	v	typeref:struct:sharp_sensor	file:
-sharp_sensors_count	sharpdistance.c	/^static uint8_t sharp_sensors_count = 0; \/* Total number of defined sensors *\/$/;"	v	file:
 sonar_add_sensor	sonar.c	/^int sonar_add_sensor(volatile uint8_t *ddr, volatile uint8_t *port, int pin)$/;"	f
 sonar_get_distance	sonar.c	/^int sonar_get_distance(int index)$/;"	f
 sonar_init	sonar.c	/^void sonar_init(void)$/;"	f
@@ -67,4 +71,3 @@ sonar_sensor	sonar.c	/^struct sonar_sensor {$/;"	s	file:
 sonar_sensors	sonar.c	/^static struct sonar_sensor sonar_sensors[MAX_SONAR_SENSORS];$/;"	v	typeref:struct:sonar_sensor	file:
 sonar_sensors_count	sonar.c	/^static uint8_t sonar_sensors_count = 0;$/;"	v	file:
 str	hello.c	/^char str[20];$/;"	v
-voltage	sharpdistance.c	/^	volatile uint16_t voltage;$/;"	m	struct:sharp_sensor	file:

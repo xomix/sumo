@@ -19,7 +19,7 @@
 #include <stdio.h>
 #include "serial.h"
 #include "sonar.h"
-#include "sharpdistance.h"
+#include "analog.h"
 
 volatile int i = 0;
 volatile char buffer[20];
@@ -54,10 +54,10 @@ void init(void)
 	// add sonar sensor
 	sonar_add_sensor(&DDRB, &PORTB, PB1);
 	sonar_add_sensor(&DDRB, &PORTB, PB1);
-	// Init sharp sensor
-	sharp_init();
+	// Init analog sensors
+	analog_init();
 	// add sharp sensor
-	sharp_add_sensor(PB2);
+	analog_add_sensor(PB2);
 	// Enable interrupts
 	sei();
 }
@@ -83,7 +83,7 @@ int main(void)
 			serial_send_str("\n");
 		}
 		sonar_query();
-		sprintf(message,"Sharp distance %d\n",sharp_get_distance(0));
+		sprintf(message,"Sharp distance %d\n",analog_read(0));
 		serial_send_str(message);
 		distance = sonar_get_distance(0);
 		distance1 = sonar_get_distance(1);

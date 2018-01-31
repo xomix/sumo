@@ -1,6 +1,6 @@
 /*
- * sharpdistance.c
- * 	sharp distance sensor api with interrupts
+ * analog.c
+ * 	analog sensor api with interrupts
  */
 
 /*
@@ -23,24 +23,29 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 #include <util/atomic.h>
-#include "sharpdistance.h"
+#include "analog.h"
 
 /* Max number of sensors connected */
-#define MAX_SHARPDISTANCE_SENSORS 8
+#define MAX_ANALOG_SENSORS 8
 
 /* Max number of input pins for conversion */
 #define MAX_ADC_INPUTS 8
 
+/* Reference Voltage for AD Conversions */
+#define V_REF 5
+/* Resolution of AD Converter */
+#define ADC_RESOLUTION 1024
+
 /* Struct to hold sensor parameters and measurements */
-struct sharp_sensor {
+struct analog_sensor {
 	uint8_t pin;
-	volatile uint16_t voltage;
+	volatile uint16_t measure;
 };
 
-static uint8_t sharp_sensors_count = 0; /* Total number of defined sensors */
-volatile uint8_t sharp_current_sensor_idx; /* index in array of sensors we are measuring */
+static uint8_t analog_sensors_count = 0; /* Total number of defined sensors */
+volatile uint8_t analog_current_sensor_idx; /* index in array of sensors we are measuring */
 volatile uint16_t conversion = 0; /* Converted value in interrupt handler */
-static struct sharp_sensor sharp_sensors[MAX_SHARPDISTANCE_SENSORS];
+static struct analog_sensor analog_sensors[MAX_ANALOG_SENSORS];
 
 /*
  * ADCSRA:
@@ -105,9 +110,9 @@ static struct sharp_sensor sharp_sensors[MAX_SHARPDISTANCE_SENSORS];
  *		to reduce power consumption.
  */
 
-void sharp_init(void)
+void analog_init(void)
 {
-	/* Initialise AD Conversion registers for sharp distance sensor */
+	/* Initialise AD Conversion registers for analog distance sensor */
 
 	ADCSRA |= (_BV(ADPS2)|_BV(ADPS1)|_BV(ADPS0)); /* 128 prescaler, with 16MHz makes 125KHz ADC Clock */
 	ADMUX |= _BV(REFS0); /* Set reference voltage to AVCC */
@@ -117,44 +122,59 @@ void sharp_init(void)
 
 }
 
-uint8_t sharp_add_sensor(uint8_t pin)
+int8_t analog_add_sensor(uint8_t pin)
 {
 	/*
 	 * Copy sensor variables to array of sensors
 	 */
 
 	/* Verify parameter */
-	if (pin >= MAX_ADC_INPUTS  || sharp_sensors_count == MAX_SHARPDISTANCE_SENSORS)
-		return 1;
+	if (pin >= MAX_ADC_INPUTS  || analog_sensors_count == MAX_ANALOG_SENSORS)
+		return -1;
 
-	sharp_sensors[sharp_sensors_count].pin = pin ;
-	sharp_sensors[sharp_sensors_count].voltage = 0 ;
+	analog_sensors[analog_sensors_count].pin = pin ;
+	analog_sensors[analog_sensors_count].measure = 0 ;
 
 	/* Update counter and start conversions if first sensor */
-	if (++sharp_sensors_count == 1 )
+	if (++analog_sensors_count == 1 )
 		ADCSRA |= _BV(ADSC); /* Start conversions */
 
-	return 0;
+	/* return index of analog sensor in array */
+	return analog_sensors_count-1;
 }
 
-uint16_t sharp_get_distance(uint8_t idx)
+uint16_t analog_read(uint8_t idx)
 {
 	/*
-	 *  returns distance in cm for selected sensor
+	 *  returns converted value for selected sensor
 	 */
-	uint16_t distance=0;
+	uint16_t measure=0;
 
-	if (idx >= 0 && idx < sharp_sensors_count) {
-		/* TODO(Jaume): Convert voltage value to distance en cm */
-		/* Distance is inverse of voltage, resolution is 10 bits */
-
+	if (idx >= 0 && idx < analog_sensors_count) {
 		/* Voltage is 16 bits (2 registers) and is modified in ISR */
 		ATOMIC_BLOCK(ATOMIC_FORCEON) {
-			distance = 1024 - sharp_sensors[idx].voltage;
+			measure = analog_sensors[idx].measure;
 		}
 	}
 
-	return distance;
+	return measure;
+}
+
+uint16_t analog_voltage(uint8_t idx)
+{
+	/*
+	 *  returns voltage value for selected sensor
+	 */
+
+	uint16_t voltage=0;
+	if (idx >= 0 && idx < analog_sensors_count) {
+		/* Voltage is 16 bits (2 registers) and is modified in ISR */
+		ATOMIC_BLOCK(ATOMIC_FORCEON) {
+			voltage = analog_sensors[idx].measure * V_REF / ADC_RESOLUTION;
+		}
+	}
+
+	return voltage;
 }
 
 /* Interrupt handling */
@@ -170,16 +190,16 @@ ISR(ADC_vect)
 	conversion = ADCW; /* This is AVR-LIBC specific to copy 16 bits at once */
 
 	/* Copy conversion value */
-	sharp_sensors[sharp_current_sensor_idx].voltage = conversion;
+	analog_sensors[analog_current_sensor_idx].measure = conversion;
 
 	/* Update array index */
-	if (++sharp_current_sensor_idx == sharp_sensors_count)
-		sharp_current_sensor_idx = 0;
+	if (++analog_current_sensor_idx == analog_sensors_count)
+		analog_current_sensor_idx = 0;
 
 	/* Select new input for next conversion,
 	 *	keeping 4 high bits as in intialisation
 	 */
-	ADMUX = ( _BV(REFS0) | sharp_sensors[sharp_current_sensor_idx].pin );
+	ADMUX = ( _BV(REFS0) | analog_sensors[analog_current_sensor_idx].pin );
 
 	/* Wait to stabilize input */
 	/* TODO(jaume): verify this delay is necessary, at least is ugly */
