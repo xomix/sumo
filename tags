@@ -8,6 +8,7 @@ BAUD	Makefile	/^BAUD=9600$/;"	m
 BIN	Makefile	/^BIN=hello$/;"	m
 CC	Makefile	/^CC=avr-gcc$/;"	m
 CFLAGS	Makefile	/^CFLAGS=-Os -DF_CPU=16000000UL -DBAUD=${BAUD}UL -mmcu=${MCU} -Wall$/;"	m
+DRIVER_H_	driver.h	2;"	d
 ISR	hello.c	/^ISR(USART_RX_vect)$/;"	f
 ISR	sharpdistance.c	/^ISR(ADC_vect)$/;"	f
 ISR	sonar.c	/^ISR(TIMER1_CAPT_vect)$/;"	f
@@ -18,7 +19,7 @@ MAX_SONAR_SENSORS	sonar.c	80;"	d	file:
 MCU	Makefile	/^MCU=atmega328p$/;"	m
 MIN_RANGE_CM	sonar.c	32;"	d	file:
 OBJCOPY	Makefile	/^OBJCOPY=avr-objcopy$/;"	m
-OBJS	Makefile	/^OBJS=hello.o serial.o sonar.o sharpdistance.o$/;"	m
+OBJS	Makefile	/^OBJS=hello.o serial.o sonar.o sharpdistance.o driver.o$/;"	m
 PORT	Makefile	/^PORT=\/dev\/ttyACM0$/;"	m
 PRESCALER	sonar.c	35;"	d	file:
 SERIAL_H_	serial.h	7;"	d
@@ -34,6 +35,10 @@ conversion	sharpdistance.c	/^volatile uint16_t conversion = 0; \/* Converted val
 current_sensor_index	sonar.c	/^static volatile uint8_t current_sensor_index = 0;$/;"	v	file:
 distance	hello.c	/^int distance,distance1;$/;"	v
 distance1	hello.c	/^int distance,distance1;$/;"	v
+driver_init	driver.c	/^void driver_init(void) {$/;"	f
+driver_move	driver.c	/^void driver_move(int8_t speed1, int8_t speed2)$/;"	f
+driver_move_motor1	driver.c	/^void driver_move_motor1(int8_t speed)$/;"	f
+driver_move_motor2	driver.c	/^void driver_move_motor2(int8_t speed)$/;"	f
 edge	sonar.c	/^static volatile uint8_t edge = 0;$/;"	v	file:
 i	hello.c	/^volatile int i = 0;$/;"	v
 init	hello.c	/^void init(void)$/;"	f
