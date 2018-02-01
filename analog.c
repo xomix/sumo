@@ -25,6 +25,14 @@
 #include <util/atomic.h>
 #include "analog.h"
 
+/* uint16 max*/
+#ifndef UINT16_MAX
+#define UINT16_MAX 65535
+#endif
+/* uint8 max*/
+#ifndef UINT8_MAX
+#define UINT8_MAX 255
+#endif
 /* Max number of sensors connected */
 #define MAX_ANALOG_SENSORS 8
 
@@ -148,7 +156,7 @@ uint16_t analog_read(uint8_t idx)
 	/*
 	 *  returns converted value for selected sensor
 	 */
-	uint16_t measure=0;
+	uint16_t measure=UINT16_MAX;
 
 	if (idx >= 0 && idx < analog_sensors_count) {
 		/* Voltage is 16 bits (2 registers) and is modified in ISR */
