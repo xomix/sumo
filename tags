@@ -5,6 +5,7 @@
 !_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
 !_TAG_PROGRAM_VERSION	5.9~svn20110310	//
 ADC_RESOLUTION	analog.c	45;"	d	file:
+ADC_RESOLUTION	analog.h	11;"	d
 ANALOG_H_	analog.h	5;"	d
 BAUD	Makefile	/^BAUD=9600$/;"	m
 BIN	Makefile	/^BIN=hello$/;"	m
@@ -21,9 +22,11 @@ MAX_SONAR_SENSORS	sonar.c	80;"	d	file:
 MCU	Makefile	/^MCU=atmega328p$/;"	m
 MIN_RANGE_CM	sonar.c	32;"	d	file:
 OBJCOPY	Makefile	/^OBJCOPY=avr-objcopy$/;"	m
-OBJS	Makefile	/^OBJS=hello.o serial.o sonar.o driver.o analog.o$/;"	m
+OBJS	Makefile	/^OBJS=hello.o serial.o sonar.o driver.o analog.o reflectance.o$/;"	m
 PORT	Makefile	/^PORT=\/dev\/ttyACM0$/;"	m
 PRESCALER	sonar.c	35;"	d	file:
+REFLECTANCE_H_	reflectance.h	5;"	d
+REFLECTANCE_WHITE	reflectance.c	4;"	d	file:
 SERIAL_H_	serial.h	7;"	d
 SONAR_H_	sonar.h	5;"	d
 SONAR_MAX_RANGE_TICKS	sonar.c	49;"	d	file:
@@ -34,6 +37,7 @@ StrRxFlag	hello.c	/^volatile uint8_t StrRxFlag = 0;$/;"	v
 UINT16_MAX	analog.c	30;"	d	file:
 UINT8_MAX	analog.c	34;"	d	file:
 V_REF	analog.c	43;"	d	file:
+V_REF	analog.h	9;"	d
 analog_add_sensor	analog.c	/^int8_t analog_add_sensor(uint8_t pin)$/;"	f
 analog_current_sensor_idx	analog.c	/^volatile uint8_t analog_current_sensor_idx; \/* index in array of sensors we are measuring *\/$/;"	v
 analog_init	analog.c	/^void analog_init(void)$/;"	f
@@ -54,6 +58,7 @@ driver_move_motor2	driver.c	/^void driver_move_motor2(int8_t speed)$/;"	f
 edge	sonar.c	/^static volatile uint8_t edge = 0;$/;"	v	file:
 i	hello.c	/^volatile int i = 0;$/;"	v
 init	hello.c	/^void init(void)$/;"	f
+initialised	analog.c	/^static uint8_t initialised = 0; \/* Flag to initialise only once the AD Conversion *\/$/;"	v	file:
 main	hello.c	/^int main(void)$/;"	f
 measure	analog.c	/^	volatile uint16_t measure;$/;"	m	struct:analog_sensor	file:
 message	hello.c	/^char message[50];$/;"	v
@@ -62,6 +67,9 @@ pin	sonar.c	/^	int pin;$/;"	m	struct:sonar_sensor	file:
 port	sonar.c	/^	volatile uint8_t *port;$/;"	m	struct:sonar_sensor	file:
 pwidth	sonar.c	/^	volatile uint16_t pwidth;$/;"	m	struct:sonar_sensor	file:
 pwidth	sonar.c	/^static volatile uint16_t pwidth = 0;$/;"	v	file:
+reflectance_add_sensor	reflectance.c	/^uint8_t reflectance_add_sensor(uint8_t pin)$/;"	f
+reflectance_init	reflectance.c	/^void reflectance_init(void)$/;"	f
+reflectance_is_line	reflectance.c	/^uint8_t reflectance_is_line(uint8_t pin)$/;"	f
 serial_init	serial.c	/^void serial_init()$/;"	f
 serial_send_char	serial.c	/^static void serial_send_char(char c)$/;"	f	file:
 serial_send_str	serial.c	/^void serial_send_str(char *s)$/;"	f

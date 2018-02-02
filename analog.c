@@ -34,10 +34,10 @@
 #define UINT8_MAX 255
 #endif
 /* Max number of sensors connected */
-#define MAX_ANALOG_SENSORS 8
+#define MAX_ANALOG_SENSORS 6
 
 /* Max number of input pins for conversion */
-#define MAX_ADC_INPUTS 8
+#define MAX_ADC_INPUTS 6
 
 /* Reference Voltage for AD Conversions */
 #define V_REF 5
@@ -50,6 +50,7 @@ struct analog_sensor {
 	volatile uint16_t measure;
 };
 
+static uint8_t initialised = 0; /* Flag to initialise only once the AD Conversion */
 static uint8_t analog_sensors_count = 0; /* Total number of defined sensors */
 volatile uint8_t analog_current_sensor_idx; /* index in array of sensors we are measuring */
 volatile uint16_t conversion = 0; /* Converted value in interrupt handler */
@@ -122,6 +123,13 @@ void analog_init(void)
 {
 	/* Initialise AD Conversion registers for analog distance sensor */
 
+	/* Check we run this function only once */
+	if (initialised){
+		return;
+	} else {
+		initialised++;
+	}
+
 	ADCSRA |= (_BV(ADPS2)|_BV(ADPS1)|_BV(ADPS0)); /* 128 prescaler, with 16MHz makes 125KHz ADC Clock */
 	ADMUX |= _BV(REFS0); /* Set reference voltage to AVCC */
 	PRR &= ~(_BV(PRADC)); /* Disable power reduction */
@@ -137,7 +145,8 @@ int8_t analog_add_sensor(uint8_t pin)
 	 */
 
 	/* Verify parameter */
-	if (pin >= MAX_ADC_INPUTS  || analog_sensors_count == MAX_ANALOG_SENSORS)
+	if (pin >= (MAX_ADC_INPUTS -1)
+			 || analog_sensors_count == MAX_ANALOG_SENSORS)
 		return -1;
 
 	analog_sensors[analog_sensors_count].pin = pin ;
@@ -148,7 +157,7 @@ int8_t analog_add_sensor(uint8_t pin)
 		ADCSRA |= _BV(ADSC); /* Start conversions */
 
 	/* return index of analog sensor in array */
-	return analog_sensors_count-1;
+	return (analog_sensors_count-1);
 }
 
 uint16_t analog_read(uint8_t idx)

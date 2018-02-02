@@ -1,7 +1,7 @@
 #  $@ is the name of the current target, $< is the name of the first prerequisite, and $^ is the list of all the prerequisites
 #
 BIN=hello
-OBJS=hello.o serial.o sonar.o driver.o analog.o
+OBJS=hello.o serial.o sonar.o driver.o analog.o reflectance.o
 
 BAUD=9600
 
