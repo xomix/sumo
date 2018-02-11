@@ -27,11 +27,11 @@
 
 /* uint16 max*/
 #ifndef UINT16_MAX
-#define UINT16_MAX 65535
+#define UINT16_MAX 65535U
 #endif
 /* uint8 max*/
 #ifndef UINT8_MAX
-#define UINT8_MAX 255
+#define UINT8_MAX 255U
 #endif
 /* Max number of sensors connected */
 #define MAX_ANALOG_SENSORS 6
