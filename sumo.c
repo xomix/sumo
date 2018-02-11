@@ -70,6 +70,9 @@ void init(void)
 	reflectance_add_sensor(PC1);
 	reflectance_add_sensor(PC2);
 	reflectance_add_sensor(PC3);
+
+	// Add initial delay
+	init_wait(5U);
 	// Enable interrupts
 	sei();
 }
