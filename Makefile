@@ -1,7 +1,7 @@
 #  $@ is the name of the current target, $< is the name of the first prerequisite, and $^ is the list of all the prerequisites
 #
-BIN=hello
-OBJS=hello.o serial.o sonar.o driver.o analog.o reflectance.o sharpdistance.o
+BIN=sumo
+OBJS=sumo.o serial.o sonar.o driver.o analog.o reflectance.o sharpdistance.o timer.o
 
 BAUD=9600
 
@@ -12,6 +12,11 @@ CFLAGS=-Os -DF_CPU=16000000UL -DBAUD=${BAUD}UL -mmcu=${MCU} -Wall
 PORT=/dev/ttyACM0
 
 .PHONY: install clean backup disassemble monitor
+
+DEBUG ?= 0
+ifeq ($(DEBUG), 1)
+	CFLAGS += -DDEBUG -g
+endif
 
 ${BIN}.hex: ${BIN}.elf
 	    ${OBJCOPY} -O ihex -R .eeprom $< $@
