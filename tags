@@ -102,6 +102,7 @@ sonar_query	sonar.c	/^void sonar_query()$/;"	f
 sonar_sensor	sonar.c	/^struct sonar_sensor {$/;"	s	file:
 sonar_sensors	sonar.c	/^static struct sonar_sensor sonar_sensors[MAX_SONAR_SENSORS];$/;"	v	typeref:struct:sonar_sensor	file:
 sonar_sensors_count	sonar.c	/^static uint8_t sonar_sensors_count = 0;$/;"	v	file:
+start_wait	timer.c	/^void start_wait(void)$/;"	f
 starting	timer.c	/^volatile uint8_t starting = 0;$/;"	v
 str	hello.c	/^char str[20];$/;"	v
 str	sumo.c	/^char str[20];$/;"	v

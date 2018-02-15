@@ -1,25 +1,27 @@
 ATMEGA328p PIN  <--> Arduino Uno <---> ATMEGA328p pin meaning
 
 
+	Arduino ATMEGA	ATMEGA			ROBOT				OR-Gate
+	=======	======	==================	====================		============
 
 1	RESET	PC6	PCINT14/RESET
 2	0	PD0	PCINT16/RXD
 3	1	PD1	PCINT17/TXD
-4	2	PD2	PCINT18/INT0		Sonar1 Trigger
+4	2	PD2	PCINT18/INT0		Motor1 IN A
 5	3	PD3	PCINT19/OC2B/INT1	PMW Motor2
-6	4	PD4	PCINT20/XCK/T0		Motor1 In A
-7			VCC
-8			GND
+6	4	PD4	PCINT20/XCK/T0		Motor1 IN B
+7			VCC							VCC
+8			GND							GND
 9		PB6	PCINT6/XTAL1/TOSC1
 10		PB7	PCINT7/XTAL2/TOSC2
-11	5	PD5	PCINT21/OC0B/T1		Motor2 In A
-12	6	PD6	PCINT22/OC0A/AIN0	Motor1 In B
-13	7	PD7	PCINT23/AIN1		Motor2 In B
-14	8	PB0	PCINT0/CLKO/ICP1	Sonar Echo Port
-15	9	PB1	OC1A/PCINT1		Sonar2 Trigger
-16	10	PB2	SS/OC1B/PCINT2		Sonar3 Trigger
+11	5	PD5	PCINT21/OC0B/T1		Sonar Left Trigger
+12	6	PD6	PCINT22/OC0A/AIN0	Motor2 IN B
+13	7	PD7	PCINT23/AIN1		Motor2 IN A
+14	8	PB0	PCINT0/CLKO/ICP1	Sonar Echo Port			Port 2Y
+15	9	PB1	OC1A/PCINT1		Sonar Center Trigger
+16	10	PB2	SS/OC1B/PCINT2		Sonar Right Trigger
 17	11	PB3	MOSI/OC2A/PCINT3	PWM Motor1
-18	12	PB4	MISO/PCINT4
+18	12	PB4	MISO/PCINT4		Start Button
 19	13	PB5	SCK/PCINT5
 20	VCC		AVCC
 21	AREF		AREF
@@ -28,5 +30,27 @@ ATMEGA328p PIN  <--> Arduino Uno <---> ATMEGA328p pin meaning
 24	A1	PC1	ADC1/PCINT9		Line sensor - Front Right
 25	A2	PC2	ADC2/PCINT10		Line sensor - Back Left
 26	A3	PC3	ADC3/PCINT11		Line sensor - Back Right
-27	A4	PC4	ADC4/SDA/PCINT12
-28	A5	PC5	ADC5/SCL/PCINT13
+27	A4	PC4	ADC4/SDA/PCINT12	IR Range - Left
+28	A5	PC5	ADC5/SCL/PCINT13	IR Range - Right
+
+
+
+
+
+OR-GATE
+=================
+
+VCC				--	VCC
+GND				--	GND
+Sonar Left ECHO			--	1A Input
+Sonar Center ECHO		--	1B Input
+1Y Output			--	2A Input
+Sonar Right ECHO		--	2B Input
+2Y Output			--	Arduino PIN 8
+
+
+MOTOR DRIVER STRAPS
+=======================
+
+VOUT 			--		Interrupteur		--		Arduino VIN
+

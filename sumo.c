@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include "sonar.h"
 #include "reflectance.h"
+#include "sharpdistance.h"
 #include "timer.h"
 
 #ifdef DEBUG
@@ -60,16 +61,21 @@ void init(void)
 	// Init sonar
 	sonar_init();
 	// add sonar sensor
-	sonar_add_sensor(&DDRD, &PORTD, PD1);
-	sonar_add_sensor(&DDRB, &PORTB, PB1);
-	sonar_add_sensor(&DDRB, &PORTB, PB2);
+	sonar_add_sensor(&DDRD, &PORTD, PD5); /* Sonar left */
+	sonar_add_sensor(&DDRB, &PORTB, PB1); /* Sonar center */
+	sonar_add_sensor(&DDRB, &PORTB, PB2); /* Sonar right */
 	// Init reflectance sensors
 	reflectance_init();
-	// add line sensor
-	reflectance_add_sensor(PC0);
-	reflectance_add_sensor(PC1);
-	reflectance_add_sensor(PC2);
-	reflectance_add_sensor(PC3);
+	// add line sensors
+	reflectance_add_sensor(PC0); /* Front Left line sensor */
+	reflectance_add_sensor(PC1); /* Front Right line sensor */
+	reflectance_add_sensor(PC2); /* Back Left line sensor */
+	reflectance_add_sensor(PC3); /* Back Right line sensor */
+	// Init IR range sensors
+	sharp_init();
+	// add IR range sensors
+	sharp_add_sensor(PC4); /* Left IR rang sensor */
+	sharp_add_sensor(PC5); /* Right IR rang sensor */
 
 	// Add initial delay
 	init_wait(5U);

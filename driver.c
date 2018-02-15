@@ -93,21 +93,21 @@ void driver_init(void) {
 	 * This setup needs board pin remapping.
 	 * Our setup:
 	 *	Does not use Analog inputs -- keep them for sensors
-	 *	Does not use enable input/fault output (digital 6 and digita 12)
+	 *	Does not use enable input/fault output (digital 6 and digital 12)
 	 *	Uses Timer0 for PWM instead of default Timer1
 	 * Our mapping is:
-	 *	Digital 4	PD4	M1INA
-	 *	Digital 6	PD6	M1INB
-	 *	Digital 5	PD5	M2INA
-	 *	Digital 7	PD7	M2INB
-	 *	Digital 11	OC2A	M1PWM
+	 *	Digital 2	PD2	M1INA
 	 *	Digital 3	OC2B 	M2PWM
+	 *	Digital 4	PD4	M1INB
+	 *	Digital 6	PD6	M2INB
+	 *	Digital 7	PD7	M2INA
+	 *	Digital 11	OC2A	M1PWM
 	 */
 
 	/* Configure pins as output */
+	DDRD |= _BV(PD2); /* digital pin 2 */
 	DDRD |= _BV(PD4); /* digital pin 4 */
 	DDRD |= _BV(PD6); /* digital PWM pin 6 */
-	DDRD |= _BV(PD5); /* digital PWM pin 5 */
 	DDRD |= _BV(PD7); /* digital pin 7 */
 	DDRB |= _BV(PB3); /* digital PWM pin 11 - used as PWM output for motor 1 */
 	DDRD |= _BV(PD3); /* digital PWM pin 3  - used as PWM output for motor 2 */
@@ -158,14 +158,14 @@ void driver_move_motor1(int8_t speed)
 
 	if (speed == 0){
 		/* Set both direction pins to low */
+		PORTD &= ~(_BV(PIN2));
 		PORTD &= ~(_BV(PIN4));
-		PORTD &= ~(_BV(PIN6));
 	} else if (reverse == 0) {
-		PORTD |= _BV(PIN4);
-		PORTD &= ~(_BV(PIN6));
-	} else {
+		PORTD |= _BV(PIN2);
 		PORTD &= ~(_BV(PIN4));
-		PORTD |= _BV(PIN6);
+	} else {
+		PORTD &= ~(_BV(PIN2));
+		PORTD |= _BV(PIN4);
 	}
 
 }
@@ -202,13 +202,13 @@ void driver_move_motor2(int8_t speed)
 
 	if (speed == 0){
 		/* Set both direction pins to low */
-		PORTD &= ~(_BV(PIN5));
+		PORTD &= ~(_BV(PIN6));
 		PORTD &= ~(_BV(PIN7));
 	} else if (reverse == 0) {
-		PORTD |= _BV(PIN5);
+		PORTD |= _BV(PIN6);
 		PORTD &= ~(_BV(PIN7));
 	} else {
-		PORTD &= ~(_BV(PIN5));
+		PORTD &= ~(_BV(PIN6));
 		PORTD |= _BV(PIN7);
 	}
 	/* Set motor2 PWM speed */
