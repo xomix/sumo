@@ -21,6 +21,7 @@
 #include "timer.h"
 
 #ifdef DEBUG
+	#warning "Compiling with DEBUG"
 	#include "serial.h"
 #endif
 
@@ -45,8 +46,14 @@ int distance,distance1;
 	}
 #endif
 
-// define F_CPU in makefile
-// define BAUD in makefile
+#ifndef F_CPU
+#warning "Default F_CPU for arduino uno"
+#define F_CPU 16000000UL
+#endif
+#ifndef BAUD
+#warning "Default F_CPU for arduino uno"
+#define BAUD 9600// define BAUD in makefile
+#endif
 
 
 void init(void)
