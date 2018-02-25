@@ -1,7 +1,7 @@
 #  $@ is the name of the current target, $< is the name of the first prerequisite, and $^ is the list of all the prerequisites
 #
 BIN=sumo
-OBJS=sumo.o serial.o sonar.o driver.o analog.o reflectance.o sharpdistance.o timer.o
+OBJS=sumo.o sonar.o driver.o analog.o reflectance.o sharpdistance.o timer.o
 
 BAUD=9600
 
@@ -16,6 +16,7 @@ PORT=/dev/ttyACM0
 DEBUG ?= 0
 ifeq ($(DEBUG), 1)
 	CFLAGS += -DDEBUG -g
+	OBJS += serial.o
 endif
 
 ${BIN}.hex: ${BIN}.elf
