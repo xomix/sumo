@@ -23,11 +23,10 @@
 #ifdef DEBUG
 	#warning "Compiling with DEBUG"
 	#include "serial.h"
-#endif
-
-
 char str[20];
 char message[50];
+#endif
+
 int distance,distance1;
 
 #ifdef DEBUG

@@ -5,16 +5,10 @@
 !_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
 !_TAG_PROGRAM_VERSION	5.9~svn20110310	//
 ADC_RESOLUTION	analog.c	45;"	d	file:
-ADC_RESOLUTION	analog.h	11;"	d
-ANALOG_H_	analog.h	5;"	d
-BAUD	Makefile	/^BAUD=9600$/;"	m
-BIN	Makefile	/^BIN=sumo$/;"	m
-CC	Makefile	/^CC=avr-gcc$/;"	m
-CFLAGS	Makefile	/^CFLAGS=-Os -DF_CPU=16000000UL -DBAUD=${BAUD}UL -mmcu=${MCU} -Wall$/;"	m
-DEBUG	Makefile	/^DEBUG ?= 0$/;"	m
+BAUD	sumo.c	54;"	d	file:
 DELAY_PRESCALER	timer.c	25;"	d	file:
 DELAY_TOP	timer.c	26;"	d	file:
-DRIVER_H_	driver.h	2;"	d
+F_CPU	sumo.c	50;"	d	file:
 ISR	analog.c	/^ISR(ADC_vect)$/;"	f
 ISR	hello.c	/^ISR(USART_RX_vect)$/;"	f
 ISR	sonar.c	/^ISR(TIMER1_CAPT_vect)$/;"	f
@@ -24,17 +18,9 @@ MAX_ADC_INPUTS	analog.c	40;"	d	file:
 MAX_ANALOG_SENSORS	analog.c	37;"	d	file:
 MAX_RANGE_METERS	sonar.c	29;"	d	file:
 MAX_SONAR_SENSORS	sonar.c	80;"	d	file:
-MCU	Makefile	/^MCU=atmega328p$/;"	m
 MIN_RANGE_CM	sonar.c	32;"	d	file:
-OBJCOPY	Makefile	/^OBJCOPY=avr-objcopy$/;"	m
-OBJS	Makefile	/^OBJS=sumo.o serial.o sonar.o driver.o analog.o reflectance.o sharpdistance.o timer.o$/;"	m
-PORT	Makefile	/^PORT=\/dev\/ttyACM0$/;"	m
 PRESCALER	sonar.c	35;"	d	file:
-REFLECTANCE_H_	reflectance.h	5;"	d
 REFLECTANCE_WHITE	reflectance.c	4;"	d	file:
-SERIAL_H_	serial.h	7;"	d
-SHARPDISTANCE_H_	sharpdistance.h	5;"	d
-SONAR_H_	sonar.h	5;"	d
 SONAR_MAX_RANGE_TICKS	sonar.c	49;"	d	file:
 SONAR_MIN_RANGE_TICKS	sonar.c	62;"	d	file:
 SONAR_SOUND_SPEED	sonar.c	26;"	d	file:
@@ -46,7 +32,6 @@ UINT16_MAX	analog.c	30;"	d	file:
 UINT8_MAX	analog.c	34;"	d	file:
 UINT8_T_MAX	timer.c	29;"	d	file:
 V_REF	analog.c	43;"	d	file:
-V_REF	analog.h	9;"	d
 analog_add_sensor	analog.c	/^int8_t analog_add_sensor(uint8_t pin)$/;"	f
 analog_current_sensor_idx	analog.c	/^volatile uint8_t analog_current_sensor_idx; \/* index in array of sensors we are measuring *\/$/;"	v
 analog_init	analog.c	/^void analog_init(void)$/;"	f
@@ -102,7 +87,6 @@ sonar_query	sonar.c	/^void sonar_query()$/;"	f
 sonar_sensor	sonar.c	/^struct sonar_sensor {$/;"	s	file:
 sonar_sensors	sonar.c	/^static struct sonar_sensor sonar_sensors[MAX_SONAR_SENSORS];$/;"	v	typeref:struct:sonar_sensor	file:
 sonar_sensors_count	sonar.c	/^static uint8_t sonar_sensors_count = 0;$/;"	v	file:
-start_wait	timer.c	/^void start_wait(void)$/;"	f
 starting	timer.c	/^volatile uint8_t starting = 0;$/;"	v
 str	hello.c	/^char str[20];$/;"	v
 str	sumo.c	/^char str[20];$/;"	v
