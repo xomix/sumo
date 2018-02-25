@@ -31,7 +31,7 @@
 
 volatile uint8_t ovf_count = 0;
 static volatile uint16_t ovf_max = 0;
-volatile uint8_t starting = 0;
+volatile uint8_t starting = 1;
 
 /* init_wait:
  *	This function sets up the timer0 to interrupt and set
@@ -57,7 +57,7 @@ ISR(TIMER0_OVF_vect)
 	 * starting phase has ended and we can stop the timer0 */
 	if ( ovf_count++ >= ovf_max ){
 		/* Starting phase has ended*/
-		starting = 1;
+		starting = 0;
 		/* Stop timer */
 		TCCR0B = 0;
 	}
