@@ -34,11 +34,18 @@ static volatile uint16_t ovf_max = 0;
 volatile uint8_t starting = 1;
 
 /* init_wait:
- *	This function sets up the timer0 to interrupt and set
+ *	This function sets up the button pin that will start the timer.
+ *	Prepares the timer0 to interrupt to wait 5 secs and sets
  *	global "starting" flag to a duration of seconds.
  */
-void init_wait(uint8_t duration)
+void init_wait(uint8_t duration, volatile uint8_t *ddr, volatile uint8_t *port, int pin)
 {
+	/* Set the button pin to input pullup */
+
+	*ddr &= ~(_BV(pin));
+        *port |= _BV(pin);
+
+
 	/* Set timer settings registers*/
 	PRR |= (_BV(PRTIM0)); /* Enable timer0 */
 	TCCR0A |= (_BV(WGM01)); /* Set CTC mode */
@@ -47,6 +54,10 @@ void init_wait(uint8_t duration)
 	OCR0A = DELAY_TOP; /* Set timer0 TOP */
 	/* Set number of overflows */
 	ovf_max = (duration * F_CPU) / ( (DELAY_TOP +1) * DELAY_PRESCALER );
+}
+
+void start_wait(void)
+{
 	TCCR0B |= (_BV(CS02) | _BV(CS00)); /* Set prescaler 1024 and start timer0 */
 }
 

@@ -5,33 +5,48 @@
 !_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
 !_TAG_PROGRAM_VERSION	5.9~svn20110310	//
 ADC_RESOLUTION	analog.c	45;"	d	file:
-BAUD	sumo.c	54;"	d	file:
+ADC_RESOLUTION	analog.h	11;"	d
+ANALOG_H_	analog.h	5;"	d
+BAUD	Makefile	/^BAUD=9600$/;"	m
+BAUD	sumo.c	35;"	d	file:
+BIN	Makefile	/^BIN=sumo$/;"	m
+CC	Makefile	/^CC=avr-gcc$/;"	m
+CFLAGS	Makefile	/^CFLAGS=-Os -DF_CPU=16000000UL -DBAUD=${BAUD}UL -mmcu=${MCU} -Wall -std=c99$/;"	m
+DEBUG	Makefile	/^DEBUG ?= 0$/;"	m
 DELAY_PRESCALER	timer.c	25;"	d	file:
 DELAY_TOP	timer.c	26;"	d	file:
-F_CPU	sumo.c	50;"	d	file:
+DRIVER_H_	driver.h	2;"	d
+F_CPU	sumo.c	31;"	d	file:
 ISR	analog.c	/^ISR(ADC_vect)$/;"	f
 ISR	hello.c	/^ISR(USART_RX_vect)$/;"	f
 ISR	sonar.c	/^ISR(TIMER1_CAPT_vect)$/;"	f
-ISR	sumo.c	/^	ISR(USART_RX_vect)$/;"	f
 ISR	timer.c	/^ISR(TIMER0_OVF_vect)$/;"	f
 MAX_ADC_INPUTS	analog.c	40;"	d	file:
 MAX_ANALOG_SENSORS	analog.c	37;"	d	file:
 MAX_RANGE_METERS	sonar.c	29;"	d	file:
 MAX_SONAR_SENSORS	sonar.c	80;"	d	file:
+MCU	Makefile	/^MCU=atmega328p$/;"	m
 MIN_RANGE_CM	sonar.c	32;"	d	file:
+OBJCOPY	Makefile	/^OBJCOPY=avr-objcopy$/;"	m
+OBJS	Makefile	/^OBJS=sumo.o sonar.o driver.o analog.o reflectance.o sharpdistance.o timer.o$/;"	m
+PORT	Makefile	/^PORT=\/dev\/ttyACM0$/;"	m
 PRESCALER	sonar.c	35;"	d	file:
+REFLECTANCE_H_	reflectance.h	5;"	d
 REFLECTANCE_WHITE	reflectance.c	4;"	d	file:
+SERIAL_H_	serial.h	7;"	d
+SHARPDISTANCE_H_	sharpdistance.h	5;"	d
+SONAR_H_	sonar.h	5;"	d
 SONAR_MAX_RANGE_TICKS	sonar.c	49;"	d	file:
 SONAR_MIN_RANGE_TICKS	sonar.c	62;"	d	file:
 SONAR_SOUND_SPEED	sonar.c	26;"	d	file:
 SONAR_TICKS_TO_CM	sonar.c	74;"	d	file:
 STARTING_DELAY_SECONDS	timer.c	22;"	d	file:
 StrRxFlag	hello.c	/^volatile uint8_t StrRxFlag = 0;$/;"	v
-StrRxFlag	sumo.c	/^	volatile uint8_t StrRxFlag = 0;$/;"	v
 UINT16_MAX	analog.c	30;"	d	file:
 UINT8_MAX	analog.c	34;"	d	file:
 UINT8_T_MAX	timer.c	29;"	d	file:
 V_REF	analog.c	43;"	d	file:
+V_REF	analog.h	9;"	d
 analog_add_sensor	analog.c	/^int8_t analog_add_sensor(uint8_t pin)$/;"	f
 analog_current_sensor_idx	analog.c	/^volatile uint8_t analog_current_sensor_idx; \/* index in array of sensors we are measuring *\/$/;"	v
 analog_init	analog.c	/^void analog_init(void)$/;"	f
@@ -41,29 +56,28 @@ analog_sensors	analog.c	/^static struct analog_sensor analog_sensors[MAX_ANALOG_
 analog_sensors_count	analog.c	/^static uint8_t analog_sensors_count = 0; \/* Total number of defined sensors *\/$/;"	v	file:
 analog_voltage	analog.c	/^uint16_t analog_voltage(uint8_t idx)$/;"	f
 buffer	hello.c	/^volatile char buffer[20];$/;"	v
-buffer	sumo.c	/^	volatile char buffer[20];$/;"	v
 conversion	analog.c	/^volatile uint16_t conversion = 0; \/* Converted value in interrupt handler *\/$/;"	v
 current_sensor_index	sonar.c	/^static volatile uint8_t current_sensor_index = 0;$/;"	v	file:
+dbg_msg	sumo.c	/^char dbg_msg[50];$/;"	v
 distance	hello.c	/^int distance,distance1;$/;"	v
-distance	sumo.c	/^int distance,distance1;$/;"	v
 distance1	hello.c	/^int distance,distance1;$/;"	v
-distance1	sumo.c	/^int distance,distance1;$/;"	v
 driver_init	driver.c	/^void driver_init(void) {$/;"	f
 driver_move	driver.c	/^void driver_move(int8_t speed1, int8_t speed2)$/;"	f
 driver_move_motor1	driver.c	/^void driver_move_motor1(int8_t speed)$/;"	f
 driver_move_motor2	driver.c	/^void driver_move_motor2(int8_t speed)$/;"	f
 edge	sonar.c	/^static volatile uint8_t edge = 0;$/;"	v	file:
 i	hello.c	/^volatile int i = 0;$/;"	v
-i	sumo.c	/^	volatile int i = 0;$/;"	v
 init	hello.c	/^void init(void)$/;"	f
-init	sumo.c	/^void init(void)$/;"	f
-init_wait	timer.c	/^void init_wait(uint8_t duration)$/;"	f
+init	sumo.c	/^void init(struct state * state)$/;"	f
+init_wait	timer.c	/^void init_wait(uint8_t duration, volatile uint8_t *ddr, volatile uint8_t *port, int pin)$/;"	f
 initialised	analog.c	/^static uint8_t initialised = 0; \/* Flag to initialise only once the AD Conversion *\/$/;"	v	file:
+ir	sumo.c	/^	struct sensor ir[2];$/;"	m	struct:state_dt	typeref:struct:state_dt::sensor	file:
+line	sumo.c	/^	struct sensor line[4];$/;"	m	struct:state_dt	typeref:struct:state_dt::sensor	file:
 main	hello.c	/^int main(void)$/;"	f
 main	sumo.c	/^int main(void)$/;"	f
 measure	analog.c	/^	volatile uint16_t measure;$/;"	m	struct:analog_sensor	file:
 message	hello.c	/^char message[50];$/;"	v
-message	sumo.c	/^char message[50];$/;"	v
+next	sumo.c	/^	state_fn * next;$/;"	m	struct:state	file:
 ovf_count	timer.c	/^volatile uint8_t ovf_count = 0;$/;"	v
 ovf_max	timer.c	/^static volatile uint16_t ovf_max = 0;$/;"	v	file:
 pin	analog.c	/^	uint8_t pin;$/;"	m	struct:analog_sensor	file:
@@ -71,9 +85,14 @@ pin	sonar.c	/^	int pin;$/;"	m	struct:sonar_sensor	file:
 port	sonar.c	/^	volatile uint8_t *port;$/;"	m	struct:sonar_sensor	file:
 pwidth	sonar.c	/^	volatile uint16_t pwidth;$/;"	m	struct:sonar_sensor	file:
 pwidth	sonar.c	/^static volatile uint16_t pwidth = 0;$/;"	v	file:
+query_sensors	sumo.c	/^void query_sensors(struct state * state)$/;"	f
+read	sumo.c	/^uint8_t read = 0;$/;"	v
 reflectance_add_sensor	reflectance.c	/^uint8_t reflectance_add_sensor(uint8_t pin)$/;"	f
 reflectance_init	reflectance.c	/^void reflectance_init(void)$/;"	f
 reflectance_is_line	reflectance.c	/^uint8_t reflectance_is_line(uint8_t pin)$/;"	f
+search	sumo.c	/^void search(struct state * state)$/;"	f
+search_wait	sumo.c	/^void search_wait(struct state * state)$/;"	f
+sensor	sumo.c	/^struct sensor{$/;"	s	file:
 serial_init	serial.c	/^void serial_init()$/;"	f
 serial_send_char	serial.c	/^static void serial_send_char(char c)$/;"	f	file:
 serial_send_str	serial.c	/^void serial_send_str(char *s)$/;"	f
@@ -87,6 +106,12 @@ sonar_query	sonar.c	/^void sonar_query()$/;"	f
 sonar_sensor	sonar.c	/^struct sonar_sensor {$/;"	s	file:
 sonar_sensors	sonar.c	/^static struct sonar_sensor sonar_sensors[MAX_SONAR_SENSORS];$/;"	v	typeref:struct:sonar_sensor	file:
 sonar_sensors_count	sonar.c	/^static uint8_t sonar_sensors_count = 0;$/;"	v	file:
-starting	timer.c	/^volatile uint8_t starting = 0;$/;"	v
+sonars	sumo.c	/^	struct sensor sonars[3];$/;"	m	struct:state_dt	typeref:struct:state_dt::sensor	file:
+start_wait	timer.c	/^void start_wait(void)$/;"	f
+starting	timer.c	/^volatile uint8_t starting = 1;$/;"	v
+state	sumo.c	/^struct state{$/;"	s	file:
+state_data	sumo.c	/^	struct state_dt state_data;$/;"	m	struct:state	typeref:struct:state::state_dt	file:
+state_dt	sumo.c	/^struct state_dt{$/;"	s	file:
+state_fn	sumo.c	/^typedef void state_fn(struct state *);$/;"	t	file:
 str	hello.c	/^char str[20];$/;"	v
-str	sumo.c	/^char str[20];$/;"	v
+value	sumo.c	/^	uint16_t value;$/;"	m	struct:sensor	file:
