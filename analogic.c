@@ -1,7 +1,0 @@
-/*
- * analogic
- * 	Get analogic input
- * 	
- */
-
-
