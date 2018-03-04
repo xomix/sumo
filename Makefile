@@ -8,7 +8,7 @@ BAUD=9600
 CC=avr-gcc
 OBJCOPY=avr-objcopy
 MCU=atmega328p
-CFLAGS=-Os -DF_CPU=16000000UL -DBAUD=${BAUD}UL -mmcu=${MCU} -Wall
+CFLAGS=-Os -DF_CPU=16000000UL -DBAUD=${BAUD}UL -mmcu=${MCU} -Wall -std=c99
 PORT=/dev/ttyACM0
 
 .PHONY: install clean backup disassemble monitor
