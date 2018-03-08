@@ -114,6 +114,7 @@ void search_wait(struct state * state)
 	/* TODO(Jaume) */
 	if (bit_is_set(PORTB,PB4) && ! read){
 		start_wait();
+		read=!read;
 	}
 
 	query_sensors(state);
