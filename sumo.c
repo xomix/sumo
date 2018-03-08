@@ -73,6 +73,37 @@ struct state{
 /* search state function
  *	wanders over the arena
  *	looking for opponent
+ *
+ function state_sonar
+ sonar left = 1 and sonar right = 1 -> function go
+ sonar left = 0 and sonar right = 1 -> function move_little_right
+ sonar left = 1 and sonar right = 0 -> function move_little_left
+ sonar left = 0  and sonar right = 0 -> function search_activ
+ 
+ search_activ:
+ for 1 to 2
+ (motor right : 20% / motor left : 10% during 0,5 sec
+ state_sonar->
+ motor right : 10% / motor left : 20% during 0,5 sec
+ )
+ state_sonar->
+ motor left : 50% during 0,5 sec
+ return 84
+ 
+ 
+ move_litle_right:
+ motor left 10% more than motor right during 0,5 sec
+ state_sonar->
+ 
+ move_litle_left
+ motor right 10% more than motor left during 0,5 sec
+ state_sonar->
+ 
+ go:
+ motor left and right : 50%
+ state_sonar->
+ 
+ 
  */
 void search(struct state * state)
 {
