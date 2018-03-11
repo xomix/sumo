@@ -133,6 +133,21 @@ void query_sensors(struct state * state)
 	}
 }
 
+/*analyse situation:
+ *Savoir si en position 1, 2 ou 3
+ *postion 1 : en face -> il faut foncer !
+ *position 3 : tête bèche -> quart de tour puis fonce !
+ *position 2 : oposés -> quart de tour puis quart de tour puis fonce!
+ *
+ *Deux options :
+ * - soit essayer de faire ça très vite : pas besoin de chercher l'autre
+ * - soit se dire que les autres vont faire ça : vite bouger pour après le chercher
+ * - soit essayer de faire vite et quand même coder de la recherche
+ */
+
+
+
+
 /* search_wait:
  *	Initial state function to search oponnent without
  *	moving motors.
