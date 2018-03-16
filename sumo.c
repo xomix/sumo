@@ -21,6 +21,7 @@
 #include "reflectance.h"
 #include "sharpdistance.h"
 #include "timer.h"
+#include "driver.h"
 
 #ifdef DEBUG
 	#warning "Compiling with DEBUG"
@@ -50,15 +51,26 @@ struct sensor{
 	uint16_t value;
 };
 
-/* struct state_dt contains:
+/* Direction struct: contains value of speed motors */
+struct direction {
+	int8_t speed1;
+	int8_t speed2;
+};
+
+/* struct state_dt contains state data:
  *	 array of 3 sonar range sensors
  *	 array of 2 ir range sensors
  *	 array of 4 ir line sensors
+ *	 array of 4 ir line sensors
+ *	 next direction [ motor1_speed, motor2_speed]
+ *	 scape direction [ motor1_speed, motor2_speed]
  */
 struct state_dt{
 	struct sensor sonars[3];
-	struct sensor ir[2];
-	struct sensor line[4];
+	struct sensor ir[2]; /* left and right IR range sensors */
+	struct sensor line[4]; /* left front, right front, left back an right back IR line sensors */
+	struct direction cur_dir; /* current direction */
+	struct direction scp_dir; /* scape direction */
 };
 
 /* struct state contains:
@@ -175,6 +187,22 @@ void search_wait(struct state * state)
 	}
 }
 
+/* scape:
+ *	set the motors to move to the scape direction set up by previous state.
+ *	this is quick and dirty, as motor's speed is not exactly moving
+ *	direction.
+ *	Next state is always search state.
+ */
+void scape(struct state * state)
+{
+	/* TODO(Jaume): get a better direction */
+	/* TODO(Jaume): set duration of manoeuver, sleep or counter ? */
+	driver_move(state->state_data.scp_dir.speed1,
+		   state->state_data.scp_dir.speed2);
+
+	state->next=search;
+}
+
 /* init:
  *	Initialises sensors:
  *		sonar range
@@ -221,6 +249,9 @@ void init(struct state * state)
 	sharp_add_sensor(PC5); /* Right IR rang sensor */
 	state->state_data.ir[0].value=0;
 	state->state_data.ir[1].value=0;
+
+	/* Init motor driver shield */
+	driver_init();
 
 	/* Add initial delay */
 	init_wait(5U, &DDRB, &PORTB, PB4);

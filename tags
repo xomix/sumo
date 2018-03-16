@@ -8,7 +8,7 @@ ADC_RESOLUTION	analog.c	45;"	d	file:
 ADC_RESOLUTION	analog.h	11;"	d
 ANALOG_H_	analog.h	5;"	d
 BAUD	Makefile	/^BAUD=9600$/;"	m
-BAUD	sumo.c	35;"	d	file:
+BAUD	sumo.c	38;"	d	file:
 BIN	Makefile	/^BIN=sumo$/;"	m
 CC	Makefile	/^CC=avr-gcc$/;"	m
 CFLAGS	Makefile	/^CFLAGS=-Os -DF_CPU=16000000UL -DBAUD=${BAUD}UL -mmcu=${MCU} -Wall -std=c99$/;"	m
@@ -16,7 +16,7 @@ DEBUG	Makefile	/^DEBUG ?= 0$/;"	m
 DELAY_PRESCALER	timer.c	25;"	d	file:
 DELAY_TOP	timer.c	26;"	d	file:
 DRIVER_H_	driver.h	2;"	d
-F_CPU	sumo.c	31;"	d	file:
+F_CPU	sumo.c	34;"	d	file:
 ISR	analog.c	/^ISR(ADC_vect)$/;"	f
 ISR	hello.c	/^ISR(USART_RX_vect)$/;"	f
 ISR	sonar.c	/^ISR(TIMER1_CAPT_vect)$/;"	f
@@ -57,8 +57,10 @@ analog_sensors_count	analog.c	/^static uint8_t analog_sensors_count = 0; \/* Tot
 analog_voltage	analog.c	/^uint16_t analog_voltage(uint8_t idx)$/;"	f
 buffer	hello.c	/^volatile char buffer[20];$/;"	v
 conversion	analog.c	/^volatile uint16_t conversion = 0; \/* Converted value in interrupt handler *\/$/;"	v
+cur_dir	sumo.c	/^	struct direction cur_dir; \/* current direction *\/$/;"	m	struct:state_dt	typeref:struct:state_dt::direction	file:
 current_sensor_index	sonar.c	/^static volatile uint8_t current_sensor_index = 0;$/;"	v	file:
 dbg_msg	sumo.c	/^char dbg_msg[50];$/;"	v
+direction	sumo.c	/^struct direction {$/;"	s	file:
 distance	hello.c	/^int distance,distance1;$/;"	v
 distance1	hello.c	/^int distance,distance1;$/;"	v
 driver_init	driver.c	/^void driver_init(void) {$/;"	f
@@ -71,8 +73,8 @@ init	hello.c	/^void init(void)$/;"	f
 init	sumo.c	/^void init(struct state * state)$/;"	f
 init_wait	timer.c	/^void init_wait(uint8_t duration, volatile uint8_t *ddr, volatile uint8_t *port, int pin)$/;"	f
 initialised	analog.c	/^static uint8_t initialised = 0; \/* Flag to initialise only once the AD Conversion *\/$/;"	v	file:
-ir	sumo.c	/^	struct sensor ir[2];$/;"	m	struct:state_dt	typeref:struct:state_dt::sensor	file:
-line	sumo.c	/^	struct sensor line[4];$/;"	m	struct:state_dt	typeref:struct:state_dt::sensor	file:
+ir	sumo.c	/^	struct sensor ir[2]; \/* left and right IR range sensors *\/$/;"	m	struct:state_dt	typeref:struct:state_dt::sensor	file:
+line	sumo.c	/^	struct sensor line[4]; \/* left front, right front, left back an right back IR line sensors *\/$/;"	m	struct:state_dt	typeref:struct:state_dt::sensor	file:
 main	hello.c	/^int main(void)$/;"	f
 main	sumo.c	/^int main(void)$/;"	f
 measure	analog.c	/^	volatile uint16_t measure;$/;"	m	struct:analog_sensor	file:
@@ -90,6 +92,8 @@ read	sumo.c	/^uint8_t read = 0;$/;"	v
 reflectance_add_sensor	reflectance.c	/^uint8_t reflectance_add_sensor(uint8_t pin)$/;"	f
 reflectance_init	reflectance.c	/^void reflectance_init(void)$/;"	f
 reflectance_is_line	reflectance.c	/^uint8_t reflectance_is_line(uint8_t pin)$/;"	f
+scape	sumo.c	/^void scape(struct state * state)$/;"	f
+scp_dir	sumo.c	/^	struct direction scp_dir; \/* scape direction *\/$/;"	m	struct:state_dt	typeref:struct:state_dt::direction	file:
 search	sumo.c	/^void search(struct state * state)$/;"	f
 search_wait	sumo.c	/^void search_wait(struct state * state)$/;"	f
 sensor	sumo.c	/^struct sensor{$/;"	s	file:
@@ -107,6 +111,8 @@ sonar_sensor	sonar.c	/^struct sonar_sensor {$/;"	s	file:
 sonar_sensors	sonar.c	/^static struct sonar_sensor sonar_sensors[MAX_SONAR_SENSORS];$/;"	v	typeref:struct:sonar_sensor	file:
 sonar_sensors_count	sonar.c	/^static uint8_t sonar_sensors_count = 0;$/;"	v	file:
 sonars	sumo.c	/^	struct sensor sonars[3];$/;"	m	struct:state_dt	typeref:struct:state_dt::sensor	file:
+speed1	sumo.c	/^	int8_t speed1;$/;"	m	struct:direction	file:
+speed2	sumo.c	/^	int8_t speed2;$/;"	m	struct:direction	file:
 start_wait	timer.c	/^void start_wait(void)$/;"	f
 starting	timer.c	/^volatile uint8_t starting = 1;$/;"	v
 state	sumo.c	/^struct state{$/;"	s	file:
