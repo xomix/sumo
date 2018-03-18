@@ -38,6 +38,9 @@ char dbg_msg[50];
 #define BAUD 9600// define BAUD in makefile
 #endif
 
+#define QUART_TOUR_COUNT 50000U // cycle pour déplacement 90°
+#define MOTOR_ON_AVANT 255U // valeur motor marche avant
+#define MOTOR_ON_ARR -255 // valeur motor marche arr
 uint8_t read = 0;
 /* state structure to hold state machine */
 struct state;
@@ -71,6 +74,7 @@ struct state_dt{
 	struct sensor line[4]; /* left front, right front, left back an right back IR line sensors */
 	struct direction cur_dir; /* current direction */
 	struct direction scp_dir; /* scape direction */
+    uint16_t counter; /* cycles in state */
 };
 
 /* struct state contains:
@@ -81,6 +85,17 @@ struct state{
 	state_fn * next;
 	struct state_dt state_data;
 };
+
+// State functions definitions
+
+void affiner(struct state *state);
+void go(struct state *state);
+void search(struct state *state);
+void search_wait(struct state *state);
+void scape(struct state *state);
+
+// Helper functions
+void query_sensors(struct state * state);
 
 /* search state function
  *	wanders over the arena
@@ -119,7 +134,58 @@ struct state{
  */
 void search(struct state * state)
 {
-	state->next=search;
+    // flag si il y a un sonar
+    int8_t sonar_detect = 0;
+    // update sensos data
+    query_sensors(state);
+    // La detection d'un seul sonar nous amene a affiner
+    for(int i=0 ; i <3; i++){
+        if (state->state_data.sonars[i].value != 0) {
+            sonar_detect = 1;
+            state->state_data.counter=0;
+            state->next=affiner; // TODO Etat Affiner à définir
+        }
+    }
+    // pas de sonar et opposant à gauche
+    if ( !sonar_detect &&  state->state_data.ir[1].value) {
+        while ( state->state_data.counter < QUART_TOUR_COUNT){
+            state->state_data.counter++;
+            driver_move(MOTOR_ON_AVANT,-MOTOR_ON_ARR);
+            
+        }
+        state->state_data.counter=0;
+        state->next=go;
+    }
+    // pas de sonar et opposant à droite
+    if ( !sonar_detect && state->state_data.ir[2].value) {
+        while ( state->state_data.counter < QUART_TOUR_COUNT){
+            state->state_data.counter++;
+            driver_move(MOTOR_ON_ARR,MOTOR_ON_AVANT);
+        }
+        state->state_data.counter=0;
+        state->next=go;
+    }
+    
+    // capeteurs de ligne stimulés
+    // définir value capteur de ligne
+    for(int i=0 ; i <4; i++){
+        if(!state->state_data.line[i].value) {
+        state->state_data.counter=0;
+        state->next=scape;
+        }
+    }
+}
+
+// définition de l'état go
+void go (struct state*state)
+{
+    state->next=go; // TODO Etat scape à définir
+}
+
+// définition de l'état affiner
+void affiner (struct state*state)
+{
+    state->next=affiner; // TODO Etat affiner à définir
 }
 
 /* query_sensors:
@@ -252,6 +318,9 @@ void init(struct state * state)
 
 	/* Init motor driver shield */
 	driver_init();
+    
+    /* Init state counter */
+    state->state_data.counter=0;
 
 	/* Add initial delay */
 	init_wait(5U, &DDRB, &PORTB, PB4);
