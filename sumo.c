@@ -264,8 +264,8 @@ void query_sensors(struct state * state)
 void search_wait(struct state * state)
 {
 	/* check PB4 for start button press */
-	/* TODO(Jaume) */
-	if (bit_is_set(PINB,PB4) && ! read){
+	/* when button is pressed it is at low level */
+	if (bit_is_clear(PINB,PB4) && ! read){
 		start_wait();
 		read=!read;
 	}
