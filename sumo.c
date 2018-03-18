@@ -38,9 +38,11 @@ char dbg_msg[50];
 #define BAUD 9600// define BAUD in makefile
 #endif
 
-#define QUART_TOUR_COUNT 50000U // cycle pour déplacement 90°
-#define MOTOR_ON_AVANT 255U // valeur motor marche avant
+#define QUART_TOUR_COUNT 50000 // cycle pour déplacement 90°
+#define MOTOR_ON_AVANT 255 // valeur motor marche avant
 #define MOTOR_ON_ARR -255 // valeur motor marche arr
+#define MOTOR_OFF 0 // valeur motor en arrêt
+
 uint8_t read = 0;
 /* state structure to hold state machine */
 struct state;
@@ -137,7 +139,6 @@ void search(struct state * state)
     // flag si il y a un sonar
     int8_t sonar_detect = 0;
     // update sensos data
-    query_sensors(state);
     // La detection d'un seul sonar nous amene a affiner
     for(int i=0 ; i <3; i++){
         if (state->state_data.sonars[i].value != 0) {
@@ -147,7 +148,7 @@ void search(struct state * state)
         }
     }
     // pas de sonar et opposant à gauche
-    if ( !sonar_detect &&  state->state_data.ir[1].value) {
+    if ( !sonar_detect &&  state->state_data.ir[0].value) {
         while ( state->state_data.counter < QUART_TOUR_COUNT){
             state->state_data.counter++;
             driver_move(MOTOR_ON_AVANT,-MOTOR_ON_ARR);
@@ -157,7 +158,7 @@ void search(struct state * state)
         state->next=go;
     }
     // pas de sonar et opposant à droite
-    if ( !sonar_detect && state->state_data.ir[2].value) {
+    if ( !sonar_detect && state->state_data.ir[1].value) {
         while ( state->state_data.counter < QUART_TOUR_COUNT){
             state->state_data.counter++;
             driver_move(MOTOR_ON_ARR,MOTOR_ON_AVANT);
@@ -166,7 +167,7 @@ void search(struct state * state)
         state->next=go;
     }
 
-    // capeteurs de ligne stimulés
+	// capteurs de ligne stimulés
     // définir value capteur de ligne
     for(int i=0 ; i <4; i++){
         if(!state->state_data.line[i].value) {
@@ -176,10 +177,38 @@ void search(struct state * state)
     }
 }
 
-// définition de l'état go
-void go (struct state*state)
+/* définition de l'état go
+ *	On fait avancer le robot vers l'avant pendant xxx
+ *	Si l'opposant est devant et on ne marche pas sur une ligne.
+ *	Si l'opposant n'est pas nettement localiser, on bascule vers affiner.
+ *	Si on marche sur une ligne, on bascule vers scape.
+ */
+void go (struct state * state)
 {
-    state->next=go; // TODO Etat scape à définir
+	// Opposant devant, on avance
+	driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT);
+
+	// Pas de détection sur un des trois sonars --> affiner
+	for(int i=0 ; i <3; i++){
+		if (state->state_data.sonars[i].value == 0) {
+			state->state_data.counter=0;
+			driver_move(MOTOR_OFF,MOTOR_OFF);
+			state->next=affiner;
+			return;
+		}
+	}
+
+	// Si l'on marche sur une ligne --> scape
+	for(int i=0 ; i <4; i++){
+		if(!state->state_data.line[i].value) {
+			state->next=scape;
+			return;
+		}
+	}
+
+	// Si on est arrivé ici, oposant devant et pas de ligne,
+	// on continue dans cet état
+	state->next=go;
 }
 
 // définition de l'état affiner
@@ -231,8 +260,6 @@ void query_sensors(struct state * state)
  *	moving motors.
  *	When "starting" flag is unset, it will move to a
  *	real search state.
- *	In this state we want to trigger sonar range sensors
- *	IR range sensors are auto triggered.
  */
 void search_wait(struct state * state)
 {
@@ -242,8 +269,6 @@ void search_wait(struct state * state)
 		start_wait();
 		read=!read;
 	}
-
-	query_sensors(state);
 
 	if(starting){
 		state->next=search_wait;
@@ -344,6 +369,8 @@ int main(void)
 
 	/* Main (infinite) loop */
 	while (1) {
+		/* Query sensors and store values in state variable) */
+		query_sensors(&state);
 		/* Execute state function */
 		state.next(&state);
 	}
