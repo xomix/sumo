@@ -106,7 +106,7 @@ void query_sensors(struct state * state);
  sonar left = 0 and sonar right = 1 -> function move_little_right
  sonar left = 1 and sonar right = 0 -> function move_little_left
  sonar left = 0  and sonar right = 0 -> function search_activ
- 
+
  search_activ:
  for 1 to 2
  (motor right : 20% / motor left : 10% during 0,5 sec
@@ -116,21 +116,21 @@ void query_sensors(struct state * state);
  state_sonar->
  motor left : 50% during 0,5 sec
  return 84
- 
- 
+
+
  move_litle_right:
  motor left 10% more than motor right during 0,5 sec
  state_sonar->
- 
+
  move_litle_left
  motor right 10% more than motor left during 0,5 sec
  state_sonar->
- 
+
  go:
  motor left and right : 50%
  state_sonar->
- 
- 
+
+
  */
 void search(struct state * state)
 {
@@ -151,7 +151,7 @@ void search(struct state * state)
         while ( state->state_data.counter < QUART_TOUR_COUNT){
             state->state_data.counter++;
             driver_move(MOTOR_ON_AVANT,-MOTOR_ON_ARR);
-            
+
         }
         state->state_data.counter=0;
         state->next=go;
@@ -165,7 +165,7 @@ void search(struct state * state)
         state->state_data.counter=0;
         state->next=go;
     }
-    
+
     // capeteurs de ligne stimulés
     // définir value capteur de ligne
     for(int i=0 ; i <4; i++){
@@ -238,7 +238,7 @@ void search_wait(struct state * state)
 {
 	/* check PB4 for start button press */
 	/* TODO(Jaume) */
-	if (bit_is_set(PORTB,PB4) && ! read){
+	if (bit_is_set(PINB,PB4) && ! read){
 		start_wait();
 		read=!read;
 	}
@@ -318,12 +318,12 @@ void init(struct state * state)
 
 	/* Init motor driver shield */
 	driver_init();
-    
+
     /* Init state counter */
     state->state_data.counter=0;
 
 	/* Add initial delay */
-	init_wait(5U, &DDRB, &PORTB, PB4);
+	init_wait(5, &DDRB, &PORTB, PB4);
 	/* Enable interrupts */
 	sei();
 	/* Set up initial state */

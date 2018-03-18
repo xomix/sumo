@@ -18,18 +18,16 @@
  *			--> 625 overflows
  */
 
-#ifndef STARTING_DELAY_SECONDS
-#define STARTING_DELAY_SECONDS 5U
-#endif
+#define DELAY_PRESCALER 1024
+#define DELAY_TOP 124
 
-#define DELAY_PRESCALER 1024U
-#define DELAY_TOP 124U
+#define TIMER_TICKS_PER_SECOND ( F_CPU / (DELAY_TOP+1) / DELAY_PRESCALER )
 
 #ifndef UINT8_T_MAX
 #define	UINT8_T_MAX 255U
 #endif
 
-volatile uint8_t ovf_count = 0;
+static volatile uint16_t ovf_count = 0;
 static volatile uint16_t ovf_max = 0;
 volatile uint8_t starting = 1;
 
@@ -45,15 +43,13 @@ void init_wait(uint8_t duration, volatile uint8_t *ddr, volatile uint8_t *port, 
 	*ddr &= ~(_BV(pin));
         *port |= _BV(pin);
 
-
 	/* Set timer settings registers*/
-	PRR |= (_BV(PRTIM0)); /* Enable timer0 */
 	TCCR0A |= (_BV(WGM01)); /* Set CTC mode */
-	TIMSK0 |= (_BV(TOIE0)); /* Enable timer overflow interrupt */
+	TIMSK0 |= (_BV(OCIE0A)); /* Enable timer interrupt on compare*/
 	TCNT0 = 0; /* Start timer0 from BOTTOM = 0 */
 	OCR0A = DELAY_TOP; /* Set timer0 TOP */
 	/* Set number of overflows */
-	ovf_max = (duration * F_CPU) / ( (DELAY_TOP +1) * DELAY_PRESCALER );
+	ovf_max = duration * TIMER_TICKS_PER_SECOND;
 }
 
 void start_wait(void)
@@ -62,7 +58,7 @@ void start_wait(void)
 }
 
 /* program interruption */
-ISR(TIMER0_OVF_vect)
+ISR(TIMER0_COMPA_vect)
 {
 	/* When we reach the selected number of overflows
 	 * starting phase has ended and we can stop the timer0 */
