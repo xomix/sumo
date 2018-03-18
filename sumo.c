@@ -316,9 +316,9 @@ void init(struct state * state)
 	/* Init sonar */
 	sonar_init();
 	/* add sonar sensor */
-	sonar_add_sensor(&DDRD, &PORTD, PD5); /* Sonar left */
+	sonar_add_sensor(&DDRB, &PORTB, PB2); /* Sonar left */
 	sonar_add_sensor(&DDRB, &PORTB, PB1); /* Sonar center */
-	sonar_add_sensor(&DDRB, &PORTB, PB2); /* Sonar right */
+	sonar_add_sensor(&DDRD, &PORTD, PD5); /* Sonar right */
 	state->state_data.sonars[0].value=0;
 	state->state_data.sonars[1].value=0;
 	state->state_data.sonars[2].value=0;
