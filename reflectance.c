@@ -16,13 +16,13 @@ uint8_t reflectance_add_sensor(uint8_t pin)
 
 /* reflectance_is_line:
  *	queries analog sensor
- *	returns 0 if white (more than REFLECTANCE_WHITE volts)
- *		1 if black
+ *	returns 1 if white (more than REFLECTANCE_WHITE volts)
+ *		0 if black
  */
 uint8_t reflectance_is_line(uint8_t pin)
 {
 	if ((analog_read(pin) * V_REF) > (REFLECTANCE_WHITE * ADC_RESOLUTION))
-		return 1;
-	else
 		return 0;
+	else
+		return 1;
 }
