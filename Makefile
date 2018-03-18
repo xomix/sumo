@@ -9,7 +9,13 @@ CC=avr-gcc
 OBJCOPY=avr-objcopy
 MCU=atmega328p
 CFLAGS=-Os -DF_CPU=16000000UL -DBAUD=${BAUD}UL -mmcu=${MCU} -Wall -std=c99
-PORT=/dev/ttyACM0
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+	PORT=/dev/ttyACM0
+endif
+ifeq ($(UNAME_S),Darwin)
+	PORT=/dev/cu.usbmodem1431
+endif
 
 .PHONY: install clean backup disassemble monitor
 
