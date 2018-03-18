@@ -117,14 +117,14 @@ void driver_init(void) {
 	OCR2B = 0;
 
 	/* Set up PWM with timer2 */
-	PRR |= _BV(PRTIM2);
-	TCCR2A |= (_BV(COM2A1));
-	TCCR2A |= (_BV(WGM20)); /* Phase corrected PWM */
+	TCCR2A |= (_BV(WGM20)); /* Phase corrected PWM, TOP = 0xFF */
+	TCCR2A |= (_BV(COM2A1)); /* Non Inverted mode for output 1*/
+	TCCR2A |= (_BV(COM2B1)); /* Non Inverted mode for output 2*/
 	TCCR2B |= (_BV(CS21)|_BV(CS20)); /* Set prescaler to CLOCK / 32. This will start PWM */
 	/* 16000000/1024 -> 15625Hz PWM frequency */
 }
 
-void driver_move_motor1(int8_t speed)
+void driver_move_motor1(int16_t speed)
 {
 	/*
 	 * speed must be constraint to -255 to 255
@@ -145,8 +145,9 @@ void driver_move_motor1(int8_t speed)
 		reverse = 1;
 	}
 
+
 	/* Set motor1 PWM speed */
-	OCR2A = speed;
+	OCR2B = speed;
 
 	/* Constrain speed values to 255
 	 * This should never happen as we use
@@ -158,18 +159,18 @@ void driver_move_motor1(int8_t speed)
 
 	if (speed == 0){
 		/* Set both direction pins to low */
-		PORTD &= ~(_BV(PIN2));
-		PORTD &= ~(_BV(PIN4));
+		PORTD &= ~(_BV(PD2));
+		PORTD &= ~(_BV(PD4));
 	} else if (reverse == 0) {
-		PORTD |= _BV(PIN2);
-		PORTD &= ~(_BV(PIN4));
+		PORTD |= _BV(PD2);
+		PORTD &= ~(_BV(PD4));
 	} else {
-		PORTD &= ~(_BV(PIN2));
-		PORTD |= _BV(PIN4);
+		PORTD &= ~(_BV(PD2));
+		PORTD |= _BV(PD4);
 	}
 
 }
-void driver_move_motor2(int8_t speed)
+void driver_move_motor2(int16_t speed)
 {
 	/*
 	 * speed must be constraint to -255 to 255
@@ -184,37 +185,39 @@ void driver_move_motor2(int8_t speed)
 	 */
 
 	uint8_t reverse = 0;
+	/*
 
 	if (speed < 0 ){
 		speed = -speed;
 		reverse = 1;
 	}
+	*/
 
 	/* Constrain speed values to 255
 	 * This should never happen as we use
 	 * uint8_t variables
-	 */
 	if (speed > 255){
 		speed = 255;
 	}
+	 */
 
-	OCR2B = speed;
+	OCR2A = speed;
 
 	if (speed == 0){
 		/* Set both direction pins to low */
-		PORTD &= ~(_BV(PIN6));
-		PORTD &= ~(_BV(PIN7));
+		PORTD &= ~(_BV(PD6));
+		PORTD &= ~(_BV(PD7));
 	} else if (reverse == 0) {
-		PORTD |= _BV(PIN6);
-		PORTD &= ~(_BV(PIN7));
+		PORTD |= _BV(PD6);
+		PORTD &= ~(_BV(PD7));
 	} else {
-		PORTD &= ~(_BV(PIN6));
-		PORTD |= _BV(PIN7);
+		PORTD &= ~(_BV(PD6));
+		PORTD |= _BV(PD7);
 	}
 	/* Set motor2 PWM speed */
 }
 
-void driver_move(int8_t speed1, int8_t speed2)
+void driver_move(int16_t speed1, int16_t speed2)
 {
 	driver_move_motor1(speed1);
 	driver_move_motor2(speed2);
