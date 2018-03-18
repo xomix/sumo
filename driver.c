@@ -161,7 +161,7 @@ void driver_move_motor1(int16_t speed)
 		/* Set both direction pins to low */
 		PORTD &= ~(_BV(PD2));
 		PORTD &= ~(_BV(PD4));
-	} else if (reverse == 0) {
+	} else if (reverse == 1) {
 		PORTD |= _BV(PD2);
 		PORTD &= ~(_BV(PD4));
 	} else {
@@ -185,21 +185,19 @@ void driver_move_motor2(int16_t speed)
 	 */
 
 	uint8_t reverse = 0;
-	/*
 
 	if (speed < 0 ){
 		speed = -speed;
 		reverse = 1;
 	}
-	*/
 
 	/* Constrain speed values to 255
 	 * This should never happen as we use
 	 * uint8_t variables
+	 */
 	if (speed > 255){
 		speed = 255;
 	}
-	 */
 
 	OCR2A = speed;
 
