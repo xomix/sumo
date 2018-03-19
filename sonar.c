@@ -224,7 +224,7 @@ int sonar_get_distance(int index)
 	 */
 	int distance;
 	if (index < 0 || index > sonar_sensors_count) {
-		distance = -1; // error, nonexistent sensor
+		distance = 0; // error, nonexistent sensor
 	} else {
 		ATOMIC_BLOCK(ATOMIC_FORCEON) {
 			distance = (sonar_sensors[index]).pwidth / SONAR_TICKS_TO_CM;
