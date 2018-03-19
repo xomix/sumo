@@ -16,7 +16,7 @@
 #include <util/delay.h>
 #include <util/atomic.h>
 #include <stdlib.h>
-#include <stdio.h>
+#include <string.h>
 #include "sonar.h"
 #include "reflectance.h"
 #include "sharpdistance.h"
@@ -25,6 +25,7 @@
 
 #ifdef DEBUG
 	#warning "Compiling with DEBUG"
+	#include <stdio.h>
 	#include "serial.h"
 char dbg_msg[50];
 #endif
@@ -38,7 +39,10 @@ char dbg_msg[50];
 #define BAUD 9600// define BAUD in makefile
 #endif
 
-#define QUART_TOUR_COUNT 50000 // cycle pour déplacement 90°
+#define AFFINER_COUNT 1000UL // cycle pour déplacement 90°
+#define OUITIEME_TOUR_COUNT 2850UL // cycle pour déplacement 45°
+#define QUART_TOUR_COUNT (2*OUITIEME_TOUR_COUNT) // cycle pour déplacement 90°
+#define DEMI_TOUR_COUNT (2*QUART_TOUR_COUNT) // cycle pour déplacement 180°
 #define MOTOR_ON_AVANT 255 // valeur motor marche avant
 #define MOTOR_ON_ARR -255 // valeur motor marche arr
 #define MOTOR_OFF 0 // valeur motor en arrêt
@@ -62,29 +66,38 @@ struct direction {
 	int8_t speed2;
 };
 
+/* Enum pour signaler vers ou il faut aller lors de la maneuvre de escape 2
+ * phase */
+enum second_phase_escape {NONE, AVG, AVD, ARG, ARD, AVANT, ARRIERE};
+
 /* struct state_dt contains state data:
  *	 array of 3 sonar range sensors
  *	 array of 2 ir range sensors
  *	 array of 4 ir line sensors
  *	 array of 4 ir line sensors
  *	 next direction [ motor1_speed, motor2_speed]
- *	 scape direction [ motor1_speed, motor2_speed]
+ *	 escape direction [ motor1_speed, motor2_speed]
+ *	 sonar sensor values encoded in a enum
+ *	 counter: variable to stick to a state for counter cycles
  */
 struct state_dt{
 	struct sensor sonars[3];
 	struct sensor ir[2]; /* left and right IR range sensors */
 	struct sensor line[4]; /* left front, right front, left back an right back IR line sensors */
 	struct direction cur_dir; /* current direction */
-	struct direction scp_dir; /* scape direction */
-    uint16_t counter; /* cycles in state */
+	struct direction scp_dir; /* escape direction */
+	enum second_phase_escape escape; /* second phase escape state */
+	uint32_t counter; /* cycles in state */
 };
 
 /* struct state contains:
  *	next state function to execute
+ *	state->name
  *	state data
  */
 struct state{
 	state_fn * next;
+	char name[20];
 	struct state_dt state_data;
 };
 
@@ -94,7 +107,10 @@ void affiner(struct state *state);
 void go(struct state *state);
 void search(struct state *state);
 void search_wait(struct state *state);
-void scape(struct state *state);
+void escape(struct state *state);
+void escape_phase2(struct state *state);
+void quart_tour_droite(struct state *state);
+void quart_tour_gauche(struct state *state);
 
 // Helper functions
 void query_sensors(struct state * state);
@@ -136,72 +152,123 @@ void query_sensors(struct state * state);
  */
 void search(struct state * state)
 {
-    // flag si il y a un sonar
-    int8_t sonar_detect = 0;
-    // update sensos data
-    // La detection d'un seul sonar nous amene a affiner
-    for(int i=0 ; i <3; i++){
-        if (state->state_data.sonars[i].value != 0) {
-            sonar_detect = 1;
-            state->state_data.counter=0;
-            state->next=affiner; // TODO Etat Affiner à définir
-        }
-    }
-    // pas de sonar et opposant à gauche
-    if ( !sonar_detect &&  state->state_data.ir[0].value) {
-        while ( state->state_data.counter < QUART_TOUR_COUNT){
-            state->state_data.counter++;
-            driver_move(MOTOR_ON_AVANT,-MOTOR_ON_ARR);
-
-        }
-        state->state_data.counter=0;
-        state->next=go;
-    }
-    // pas de sonar et opposant à droite
-    if ( !sonar_detect && state->state_data.ir[1].value) {
-        while ( state->state_data.counter < QUART_TOUR_COUNT){
-            state->state_data.counter++;
-            driver_move(MOTOR_ON_ARR,MOTOR_ON_AVANT);
-        }
-        state->state_data.counter=0;
-        state->next=go;
-    }
+	// Set name for debugging
+	strcpy(state->name,"search");
 
 	// capteurs de ligne stimulés
-    // définir value capteur de ligne
-    for(int i=0 ; i <4; i++){
-        if(!state->state_data.line[i].value) {
-        state->state_data.counter=0;
-        state->next=scape;
-        }
-    }
+	for(int i=0 ; i <4; i++){
+		if(state->state_data.line[i].value) {
+			state->state_data.counter=0;
+			state->next=escape;
+			return;
+		}
+	}
+
+	// La detection d'un seul sonar nous amene a affiner
+	for(int i=0 ; i <3; i++){
+		if (state->state_data.sonars[i].value) {
+			state->state_data.counter=0;
+			state->next=affiner;
+			return;
+		}
+	}
+	// pas de sonar et opposant à gauche
+	if (state->state_data.ir[0].value) {
+		state->state_data.counter=0;
+		state->next=quart_tour_gauche;
+		return;
+	}
+	// pas de sonar et opposant à droite
+	if (state->state_data.ir[1].value) {
+		state->state_data.counter=0;
+		state->next=quart_tour_droite;
+		return;
+	}
+
+	/* Pas de détection de l'opposant.
+	 * TODO: On avance? */
+	// driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT);
+	state->next=search;
+}
+
+void quart_tour_droite(struct state *state)
+{
+	// Set name for debugging
+	strcpy(state->name,"quart_tour_droite");
+	state->state_data.counter++;
+	driver_move(MOTOR_ON_AVANT,MOTOR_ON_ARR);
+	state->next=quart_tour_droite;
+	// capteurs de ligne stimulés
+	for(int i=0 ; i <4; i++){
+		if(state->state_data.line[i].value) {
+			state->state_data.counter=0;
+			state->next=escape;
+			return;
+		}
+	}
+
+	// Opposant devant, on avance
+	if(state->state_data.counter > QUART_TOUR_COUNT){
+		state->state_data.counter=0;
+		driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT);
+		state->next=go;
+		return;
+	}
+}
+
+void quart_tour_gauche(struct state *state)
+{
+	// Set name for debugging
+	strcpy(state->name,"quart_tour_gauche");
+	state->state_data.counter++;
+	driver_move(MOTOR_ON_ARR,MOTOR_ON_AVANT);
+	state->next=quart_tour_gauche;
+	// capteurs de ligne stimulés
+	for(int i=0 ; i <4; i++){
+		if(state->state_data.line[i].value) {
+			state->state_data.counter=0;
+			state->next=escape;
+			return;
+		}
+	}
+
+	// Opposant devant, on avance
+	if(state->state_data.counter > QUART_TOUR_COUNT){
+		state->state_data.counter=0;
+		driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT);
+		state->next=go;
+		return;
+	}
 }
 
 /* définition de l'état go
  *	On fait avancer le robot vers l'avant pendant xxx
  *	Si l'opposant est devant et on ne marche pas sur une ligne.
  *	Si l'opposant n'est pas nettement localiser, on bascule vers affiner.
- *	Si on marche sur une ligne, on bascule vers scape.
+ *	Si on marche sur une ligne, on bascule vers escape.
  */
-void go (struct state * state)
+void go(struct state * state)
 {
+	// Set name for debugging
+	strcpy(state->name,"go");
 	// Opposant devant, on avance
 	driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT);
 
-	// Pas de détection sur un des trois sonars --> affiner
-	for(int i=0 ; i <3; i++){
-		if (state->state_data.sonars[i].value == 0) {
+	// Si l'on marche sur une ligne --> escape
+	for(int i=0 ; i <4; i++){
+		if(state->state_data.line[i].value) {
 			state->state_data.counter=0;
-			driver_move(MOTOR_OFF,MOTOR_OFF);
-			state->next=affiner;
+			state->next=escape;
 			return;
 		}
 	}
 
-	// Si l'on marche sur une ligne --> scape
-	for(int i=0 ; i <4; i++){
-		if(!state->state_data.line[i].value) {
-			state->next=scape;
+	// Pas de détection sur un des trois sonars --> affiner
+	for(int i=0 ; i <3; i++){
+		if (!state->state_data.sonars[i].value) {
+			state->state_data.counter=0;
+			driver_move(MOTOR_OFF,MOTOR_OFF);
+			state->next=affiner;
 			return;
 		}
 	}
@@ -212,9 +279,82 @@ void go (struct state * state)
 }
 
 // définition de l'état affiner
-void affiner (struct state*state)
+void affiner(struct state*state)
 {
-    state->next=affiner; // TODO Etat affiner à définir
+	strcpy(state->name,"affiner");
+	state->state_data.counter++;
+	uint8_t my_state=0;
+	/* Create a binary table:
+	 * SONAR			Right	Center	Left
+	 * BIT position in my_state	2	1	0
+	 *				0/1	0/1	0/1
+	 * Meaning:	1 detection
+	 *		0 no detection
+	 * so:
+	 *	000 -> 0 -> no detection
+	 *	001 -> 1 -> left sonar
+	 *	010 -> 2 -> center sonar
+	 *	011 -> 3 -> left + center sonar
+	 *	100 -> 4 -> right sonar
+	 *	101 -> 5 -> right + left sonar
+	 *	110 -> 6 -> right + center sonar
+	 *	111 -> 7 -> right+center+left sonar
+	 */
+	for (uint8_t i=0; i<3; i++){
+		if(state->state_data.sonars[i].value) {
+			my_state|=(state->state_data.sonars[i].value<<i);
+		}
+	}
+	// TODO(Jaume): define this magic numbers
+
+	switch(my_state){
+	case 0:
+		state->next=search;
+		return;
+		break;
+	case 1:
+		// only left sonar
+		driver_move(MOTOR_OFF,MOTOR_ON_AVANT);
+		state->next=go;
+		break;
+	case 2:
+		// only center sonar
+		driver_move(MOTOR_ON_AVANT-50,MOTOR_ON_AVANT-50);
+		state->next=go;
+		break;
+	case 3:
+		// left and center sonar
+		driver_move(MOTOR_ON_AVANT-150,MOTOR_ON_AVANT);
+		state->next=go;
+		break;
+	case 4:
+		// only right sonar
+		driver_move(MOTOR_ON_AVANT,MOTOR_OFF);
+		state->next=go;
+		break;
+	case 5:
+		// left and right sonar
+		driver_move(MOTOR_ON_AVANT-150,MOTOR_ON_AVANT-150);
+		state->next=go;
+		break;
+	case 6:
+		// right and center sonar
+		driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT-150);
+		state->next=go;
+		break;
+	case 7:
+		// 3 sonars
+		state->next=go;
+		return;
+		break;
+	default:
+		state->next=search;
+		return;
+		break;
+	}
+	if (state->state_data.counter < AFFINER_COUNT){
+		state->next=affiner;
+	}
 }
 
 /* query_sensors:
@@ -228,15 +368,26 @@ void query_sensors(struct state * state)
 	/* Copy sonars distances to state*/
 	for(int i=0 ; i <3; i++){
 		state->state_data.sonars[i].value = sonar_get_distance(i);
+#ifdef DEBUG_SONAR
+		sprintf(dbg_msg,"Sonar %d mesure: %d.\n",i,sonar_get_distance(i));
+		serial_send_str(dbg_msg);
+#endif
 	}
 	/* Copy range ir distances to state */
 	for(int i=0; i<2; i++){
 		state->state_data.ir[i].value = sharp_distance(i);
+#ifdef DEBUG
+		sprintf(dbg_msg,"SHARP IR %d mesure: %d.\n",i,sharp_distance(i));
+		serial_send_str(dbg_msg);
+#endif
 	}
 	/* Copy line ir detection to state */
 	for(int i=0; i<4; i++){
 		state->state_data.line[i].value = reflectance_is_line(i);
-		/* TODO(Jaume): if detection, set new state function here */
+#ifdef DEBUG
+		sprintf(dbg_msg,"LINE IR %d mesure: %d.\n",i,reflectance_is_line(i));
+		serial_send_str(dbg_msg);
+#endif
 	}
 }
 
@@ -263,6 +414,7 @@ void query_sensors(struct state * state)
  */
 void search_wait(struct state * state)
 {
+	strcpy(state->name,"search_wait");
 	/* check PB4 for start button press */
 	/* when button is pressed it is at low level */
 	if (bit_is_clear(PINB,PB4) && ! read){
@@ -278,20 +430,125 @@ void search_wait(struct state * state)
 	}
 }
 
-/* scape:
- *	set the motors to move to the scape direction set up by previous state.
- *	this is quick and dirty, as motor's speed is not exactly moving
- *	direction.
- *	Next state is always search state.
+/* escape:
+ *	escape strategie is in two phases:
+ *		First phase (this state) is to go in opposite direction of the
+ *		line detected. This will be done for some state machine cycles.
+ *		At the end of this phase, we switch to second phase:
+ *		escape_phase2.
+ *
+ *		A harness at the end of the state is coded.
+ *
+ *		At the end of the whole escape manoeuvre we switch to search state.
  */
-void scape(struct state * state)
+void escape(struct state * state)
 {
-	/* TODO(Jaume): get a better direction */
-	/* TODO(Jaume): set duration of manoeuver, sleep or counter ? */
-	driver_move(state->state_data.scp_dir.speed1,
-		   state->state_data.scp_dir.speed2);
+	strcpy(state->name,"escape");
+	/* increment counter */
+	state->state_data.counter++;
+	/* Ligne devant
+	 * Premier phase, on recule.
+	 */
+	if (state->state_data.line[0].value || state->state_data.line[1].value){
+		driver_move(MOTOR_ON_ARR,MOTOR_ON_ARR);
+		/* Prepare phase two direction */
+		if (state->state_data.line[0].value && state->state_data.line[1].value) {
+			state->state_data.escape=ARRIERE; // On va partir en reculant
+		} else if (state->state_data.line[0].value){
+			state->state_data.escape=ARG;
+		} else {
+			state->state_data.escape=ARD;
+		}
+		state->next=escape;
+		return;
+	}
+	/* Ligne derriere
+	 * Premier phase, on avance.
+	 */
+	if (state->state_data.line[2].value || state->state_data.line[3].value){
+		driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT);
+		/* Prepare phase two direction */
+		if (state->state_data.line[2].value && state->state_data.line[3].value) {
+			state->state_data.escape=AVANT; // On va partir en avançant
+		} else if (state->state_data.line[2].value){
+			state->state_data.escape=AVD;
+		} else {
+			state->state_data.escape=AVG;
+		}
+		state->next=escape;
+		return;
+	}
 
+	/* Stay in this state until first manoeuver ends */
+	/* TODO(Jaume): set up a lookup table to limit counter */
+	if (state->state_data.counter < 5000 ){
+		state->next=escape;
+		return;
+	} else{ /* Phase two escape manoeuvre */
+
+		/* reset counter */
+		state->state_data.counter=0;
+		state->next=escape_phase2;
+		return;
+	}
+
+	/* Should never get here, but as this is getting complex, setup a
+	 * safety harness */
+	/* Escape manoeuvre finished, let's search for opponnent */
 	state->next=search;
+	/* And clear counters */
+	state->state_data.counter=0;
+}
+
+void escape_phase2(struct state * state)
+{
+	strcpy(state->name,"escape ph2");
+	/* increment counter */
+	state->state_data.counter++;
+	/* Move motors with information set up by phase1 */
+	switch(state->state_data.escape){
+	case AVANT:
+		// Il faut aller vers l'avant
+		driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT);
+		break;
+	case ARRIERE:
+		driver_move(MOTOR_ON_ARR,MOTOR_ON_ARR);
+		break;
+	case AVG:
+		// Un peu vers la gauche
+		driver_move(MOTOR_ON_ARR+100,MOTOR_ON_AVANT);
+		break;
+	case AVD:
+		// Un peu vers la droite
+		driver_move(MOTOR_ON_AVANT,MOTOR_ON_ARR+100);
+		break;
+	case ARG:
+		// Un peu vers la gauche
+		driver_move(MOTOR_ON_AVANT-100,MOTOR_ON_ARR);
+		break;
+	case ARD:
+		// Un peu vers la droite
+		driver_move(MOTOR_ON_ARR,MOTOR_ON_AVANT-100);
+		break;
+	default: // on sort d'ici, on ne sais pas qu'est-ce qu'on y fait d'ailleurs
+		state->state_data.counter=0;
+		state->next=search;
+		return;
+		break;
+	}
+
+	/* set new state selon counter */
+	/* TODO(Jaume): Set up a lookup table to use as counter limit */
+	if (state->state_data.counter < 2500){
+		state->next=escape_phase2;
+	}
+	else {
+		/* End of 2phase manoeuvre*/
+		state->state_data.escape=NONE;
+		state->state_data.counter=0;
+		driver_move(0,0);
+		state->next=search;
+	}
 }
 
 /* init:
@@ -344,8 +601,10 @@ void init(struct state * state)
 	/* Init motor driver shield */
 	driver_init();
 
-    /* Init state counter */
-    state->state_data.counter=0;
+	/* Init state counter */
+	state->state_data.counter=0;
+	/* Init state escape mode */
+	state->state_data.escape=NONE;
 
 	/* Add initial delay */
 	init_wait(5, &DDRB, &PORTB, PB4);
@@ -371,6 +630,11 @@ int main(void)
 	while (1) {
 		/* Query sensors and store values in state variable) */
 		query_sensors(&state);
+#ifdef DEBUG
+		sprintf(dbg_msg,"State: %s, Counter: %lu, Escape: %d.\n",
+			state.name, state.state_data.counter, state.state_data.escape);
+		serial_send_str(dbg_msg);
+#endif
 		/* Execute state function */
 		state.next(&state);
 	}
