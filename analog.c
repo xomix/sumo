@@ -132,7 +132,7 @@ void analog_init(void)
 
 	ADCSRA |= (_BV(ADPS2)|_BV(ADPS1)|_BV(ADPS0)); /* 128 prescaler, with 16MHz makes 125KHz ADC Clock */
 	ADMUX |= _BV(REFS0); /* Set reference voltage to AVCC */
-	PRR &= ~(_BV(PRADC)); /* Disable power reduction */
+	//PRR &= ~(_BV(PRADC)); /* Disable power reduction */
 	ADCSRA |= _BV(ADEN); /* Enable Conversions */
 	ADCSRA |= _BV(ADIE); /* Enable conversions Interrupts */
 
@@ -145,7 +145,7 @@ int8_t analog_add_sensor(uint8_t pin)
 	 */
 
 	/* Verify parameter */
-	if (pin >= (MAX_ADC_INPUTS -1)
+	if (pin >= (MAX_ADC_INPUTS)
 			 || analog_sensors_count == MAX_ANALOG_SENSORS)
 		return -1;
 
@@ -215,6 +215,10 @@ ISR(ADC_vect)
 
 	/* Select new input for next conversion,
 	 *	keeping 4 high bits as in intialisation
+	 *	could be written as:
+	 *		volatile uint8_t tmp = 0;
+	 *		tmp = ADMUX & 0xF0; // read ADMUX config only
+	 *		ADMUX = ( tmp | analog_sensors[analog_current_sensor_idx].pin)
 	 */
 	ADMUX = ( _BV(REFS0) | analog_sensors[analog_current_sensor_idx].pin );
 

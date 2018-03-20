@@ -57,6 +57,7 @@ typedef void state_fn(struct state *);
 
 /* Sensor struct: contains value of sensor reading */
 struct sensor{
+	uint8_t index;
 	uint16_t value;
 };
 
@@ -375,17 +376,19 @@ void query_sensors(struct state * state)
 	}
 	/* Copy range ir distances to state */
 	for(int i=0; i<2; i++){
-		state->state_data.ir[i].value = sharp_distance(i);
+		state->state_data.ir[i].value = sharp_distance(state->state_data.ir[i].index);
 #ifdef DEBUG
-		sprintf(dbg_msg,"SHARP IR %d mesure: %d.\n",i,sharp_distance(i));
+		sprintf(dbg_msg,"SHARP IR %d mesure: %d.\n",
+			i,sharp_distance(state->state_data.ir[i].index));
 		serial_send_str(dbg_msg);
 #endif
 	}
 	/* Copy line ir detection to state */
 	for(int i=0; i<4; i++){
-		state->state_data.line[i].value = reflectance_is_line(i);
+		state->state_data.line[i].value = reflectance_is_line(state->state_data.line[i].index);
 #ifdef DEBUG
-		sprintf(dbg_msg,"LINE IR %d mesure: %d.\n",i,reflectance_is_line(i));
+		sprintf(dbg_msg,"LINE IR %d mesure: %d.\n",
+			i,reflectance_is_line(state->state_data.line[i].index));
 		serial_send_str(dbg_msg);
 #endif
 	}
@@ -582,10 +585,10 @@ void init(struct state * state)
 	/* Init reflectance sensors */
 	reflectance_init();
 	/* add line sensors */
-	reflectance_add_sensor(PC0); /* Front Left line sensor */
-	reflectance_add_sensor(PC1); /* Front Right line sensor */
-	reflectance_add_sensor(PC2); /* Back Left line sensor */
-	reflectance_add_sensor(PC3); /* Back Right line sensor */
+	state->state_data.line[0].index=reflectance_add_sensor(PC0); /* Front Left line sensor */
+	state->state_data.line[1].index=reflectance_add_sensor(PC1); /* Front Right line sensor */
+	state->state_data.line[2].index=reflectance_add_sensor(PC2); /* Back Left line sensor */
+	state->state_data.line[3].index=reflectance_add_sensor(PC3); /* Back Right line sensor */
 	state->state_data.line[0].value=0;
 	state->state_data.line[1].value=0;
 	state->state_data.line[2].value=0;
@@ -593,8 +596,8 @@ void init(struct state * state)
 	/* Init IR range sensors */
 	sharp_init();
 	/* add IR range sensors */
-	sharp_add_sensor(PC4); /* Left IR rang sensor */
-	sharp_add_sensor(PC5); /* Right IR rang sensor */
+	state->state_data.ir[0].index=sharp_add_sensor(PC4); /* Left IR rang sensor */
+	state->state_data.ir[1].index=sharp_add_sensor(PC5); /* Right IR rang sensor */
 	state->state_data.ir[0].value=0;
 	state->state_data.ir[1].value=0;
 
