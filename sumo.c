@@ -369,7 +369,7 @@ void query_sensors(struct state * state)
 	/* Copy sonars distances to state*/
 	for(int i=0 ; i <3; i++){
 		state->state_data.sonars[i].value = sonar_get_distance(i);
-#ifdef DEBUG_SONAR
+#ifdef DEBUG
 		sprintf(dbg_msg,"Sonar %d mesure: %d.\n",i,sonar_get_distance(i));
 		serial_send_str(dbg_msg);
 #endif
@@ -377,7 +377,7 @@ void query_sensors(struct state * state)
 	/* Copy range ir distances to state */
 	for(int i=0; i<2; i++){
 		state->state_data.ir[i].value = sharp_distance(state->state_data.ir[i].index);
-#ifdef DEBUG
+#ifdef DEBUG_2
 		sprintf(dbg_msg,"SHARP IR %d mesure: %d.\n",
 			i,sharp_distance(state->state_data.ir[i].index));
 		serial_send_str(dbg_msg);
@@ -386,7 +386,7 @@ void query_sensors(struct state * state)
 	/* Copy line ir detection to state */
 	for(int i=0; i<4; i++){
 		state->state_data.line[i].value = reflectance_is_line(state->state_data.line[i].index);
-#ifdef DEBUG
+#ifdef DEBUG_2
 		sprintf(dbg_msg,"LINE IR %d mesure: %d.\n",
 			i,reflectance_is_line(state->state_data.line[i].index));
 		serial_send_str(dbg_msg);
@@ -576,8 +576,8 @@ void init(struct state * state)
 	/* Init sonar */
 	sonar_init();
 	/* add sonar sensor */
-	sonar_add_sensor(&DDRB, &PORTB, PB2); /* Sonar left */
-	sonar_add_sensor(&DDRB, &PORTB, PB1); /* Sonar center */
+	sonar_add_sensor(&DDRB, &PORTB, PB1); /* Sonar left */
+	sonar_add_sensor(&DDRB, &PORTB, PB2); /* Sonar center */
 	sonar_add_sensor(&DDRD, &PORTD, PD5); /* Sonar right */
 	state->state_data.sonars[0].value=0;
 	state->state_data.sonars[1].value=0;
