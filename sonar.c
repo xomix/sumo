@@ -227,7 +227,8 @@ int sonar_get_distance(int index)
 		distance = 0; // error, nonexistent sensor
 	} else {
 		ATOMIC_BLOCK(ATOMIC_FORCEON) {
-			distance = (sonar_sensors[index]).pwidth / SONAR_TICKS_TO_CM;
+			//distance = (sonar_sensors[index]).pwidth / SONAR_TICKS_TO_CM;
+			distance = (sonar_sensors[index]).pwidth;
 		}
 	}
 	return distance;
