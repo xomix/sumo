@@ -1,7 +1,7 @@
 #  $@ is the name of the current target, $< is the name of the first prerequisite, and $^ is the list of all the prerequisites
 #
 BIN=sumo
-OBJS=sumo.o sonar.o driver.o analog.o reflectance.o sharpdistance.o timer.o
+OBJS=sumo.o timer.o ultrasonic.o driver.o analog.o reflectance.o sharpdistance.o timer-j.o
 
 BAUD=9600
 

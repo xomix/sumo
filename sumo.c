@@ -17,11 +17,11 @@
 #include <util/atomic.h>
 #include <stdlib.h>
 #include <string.h>
-#include "sonar.h"
 #include "reflectance.h"
 #include "sharpdistance.h"
-#include "timer.h"
+#include "timer-j.h"
 #include "driver.h"
+#include "ultrasonic.h"
 
 #ifdef DEBUG
 	#warning "Compiling with DEBUG"
@@ -39,10 +39,11 @@ char dbg_msg[50];
 #define BAUD 9600// define BAUD in makefile
 #endif
 
-#define AFFINER_COUNT 1000UL // cycle pour déplacement 90°
-#define OUITIEME_TOUR_COUNT 2850UL // cycle pour déplacement 45°
-#define QUART_TOUR_COUNT (2*OUITIEME_TOUR_COUNT) // cycle pour déplacement 90°
-#define DEMI_TOUR_COUNT (2*QUART_TOUR_COUNT) // cycle pour déplacement 180°
+#define GO_COUNT 1000U // cycle pour avancer
+#define ESCAPE_COUNT 8000U // cycle pour s'echaper
+#define ESCAPE_COUNT_2 2000U // cycle pour echaper, deuxieme phase
+#define QUART_TOUR_COUNT 8000U // cycle pour déplacement 45°
+#define DEMI_TOUR_COUNT 16000U // cycle pour déplacement 90°
 #define MOTOR_ON_AVANT 255 // valeur motor marche avant
 #define MOTOR_ON_ARR -255 // valeur motor marche arr
 #define MOTOR_OFF 0 // valeur motor en arrêt
@@ -69,7 +70,7 @@ struct direction {
 
 /* Enum pour signaler vers ou il faut aller lors de la maneuvre de escape 2
  * phase */
-enum second_phase_escape {NONE, AVG, AVD, ARG, ARD, AVANT, ARRIERE};
+enum second_phase_escape {AVG, AVD, ARG, ARD, AVANT, ARRIERE};
 
 /* struct state_dt contains state data:
  *	 array of 3 sonar range sensors
@@ -85,8 +86,6 @@ struct state_dt{
 	struct sensor sonars[3];
 	struct sensor ir[2]; /* left and right IR range sensors */
 	struct sensor line[4]; /* left front, right front, left back an right back IR line sensors */
-	struct direction cur_dir; /* current direction */
-	struct direction scp_dir; /* escape direction */
 	enum second_phase_escape escape; /* second phase escape state */
 	uint16_t counter; /* cycles in state */
 };
@@ -104,7 +103,6 @@ struct state{
 
 // State functions definitions
 
-void affiner(struct state *state);
 void go(struct state *state);
 void search(struct state *state);
 void search_wait(struct state *state);
@@ -112,6 +110,7 @@ void escape(struct state *state);
 void escape_phase2(struct state *state);
 void quart_tour_droite(struct state *state);
 void quart_tour_gauche(struct state *state);
+void demi_tour(struct state *state);
 
 // Helper functions
 void query_sensors(struct state * state);
@@ -155,7 +154,6 @@ void search(struct state * state)
 {
 	// Set name for debugging
 	strcpy(state->name,"search");
-	uint8_t my_state = 0; // int variable to code sonar state as a bitfield
 
 	// capteurs de ligne stimulés
 	for(int i=0 ; i <4; i++){
@@ -166,30 +164,11 @@ void search(struct state * state)
 		}
 	}
 
-	// Create the bitfield :
-	//	lsb -> left sonar
-	//	middle bit -> center sonar
-	//	msb --> right sonar
-	for (uint8_t i=0; i<3; i++){
-		if(state->state_data.sonars[i].value) {
-			my_state|=(state->state_data.sonars[i].value<<i);
-		}
-	}
-
-	switch(my_state){
-	case 0: // No sonars, look IR sensors
-		break;
-	case 7: // 3 sonars --> go!
+	if(state->state_data.sonars[0].value) {
 		state->state_data.counter=0;
 		state->next=go;
 		return;
-		break;
-	default: // some sonar configuration detected
-		state->state_data.counter=0;
-		state->next=affiner;
-		return;
-		break;
-	}
+		}
 
 	// pas de sonar et opposant à gauche
 	if (state->state_data.ir[0].value) {
@@ -206,9 +185,35 @@ void search(struct state * state)
 
 	/* Pas de détection de l'opposant.
 	 * TODO: On avance? */
-	// driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT);
+	driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT);
 	// No counter reset, if we get here, we stick to this state
 	state->next=search;
+}
+
+void demi_tour(struct state *state)
+{
+	// Set name for debugging
+	strcpy(state->name,"demi_tour");
+	driver_move(MOTOR_ON_AVANT,MOTOR_ON_ARR);
+	state->state_data.counter++;
+	state->next=demi_tour;
+
+	// capteurs de ligne stimulés
+	for(int i=0 ; i <4; i++){
+		if(state->state_data.line[i].value) {
+			state->state_data.counter=0;
+			state->next=escape;
+			return;
+		}
+	}
+
+	// Opposant supposé devant, on avance
+	if(state->state_data.counter > DEMI_TOUR_COUNT){
+		driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT);
+		state->state_data.counter=0;
+		state->next=go;
+		return;
+	}
 }
 
 void quart_tour_droite(struct state *state)
@@ -218,6 +223,7 @@ void quart_tour_droite(struct state *state)
 	driver_move(MOTOR_ON_AVANT,MOTOR_ON_ARR);
 	state->state_data.counter++;
 	state->next=quart_tour_droite;
+
 	// capteurs de ligne stimulés
 	for(int i=0 ; i <4; i++){
 		if(state->state_data.line[i].value) {
@@ -243,6 +249,7 @@ void quart_tour_gauche(struct state *state)
 	driver_move(MOTOR_ON_ARR,MOTOR_ON_AVANT);
 	state->state_data.counter++;
 	state->next=quart_tour_gauche;
+
 	// capteurs de ligne stimulés
 	for(int i=0 ; i <4; i++){
 		if(state->state_data.line[i].value) {
@@ -283,109 +290,17 @@ void go(struct state * state)
 		}
 	}
 
-	// Pas de détection sur un des trois sonars --> affiner
-	for(int i=0 ; i <3; i++){
-		if (!state->state_data.sonars[i].value) {
-			driver_move(MOTOR_OFF,MOTOR_OFF);
+	// Pas de détection du sonar --> search
+	if (!state->state_data.sonars[0].value &&
+	    state->state_data.counter > GO_COUNT) {
 			state->state_data.counter=0;
-			state->next=affiner;
+			state->next=search;
 			return;
-		}
 	}
 
 	// Si on est arrivé ici, oposant devant et pas de ligne,
 	// on continue dans cet état
 	state->next=go;
-}
-
-// définition de l'état affiner
-void affiner(struct state*state)
-{
-	strcpy(state->name,"affiner");
-	state->state_data.counter++;
-	uint8_t my_state=0;
-	/* Create a binary table:
-	 * SONAR			Right	Center	Left
-	 * BIT position in my_state	2	1	0
-	 *				0/1	0/1	0/1
-	 * Meaning:	1 detection
-	 *		0 no detection
-	 * so:
-	 *	000 -> 0 -> no detection
-	 *	001 -> 1 -> left sonar
-	 *	010 -> 2 -> center sonar
-	 *	011 -> 3 -> left + center sonar
-	 *	100 -> 4 -> right sonar
-	 *	101 -> 5 -> right + left sonar
-	 *	110 -> 6 -> right + center sonar
-	 *	111 -> 7 -> right+center+left sonar
-	 */
-	for (uint8_t i=0; i<3; i++){
-		if(state->state_data.sonars[i].value) {
-			my_state|=(state->state_data.sonars[i].value<<i);
-		}
-	}
-	// TODO(Jaume): define this magic numbers
-
-	switch(my_state){
-	case 0:
-		state->state_data.counter=0;
-		state->next=search;
-		return;
-		break;
-	case 1:
-		// only left sonar
-		driver_move(MOTOR_OFF,MOTOR_ON_AVANT);
-		// Stay in this state
-		state->next=affiner;
-		break;
-	case 2:
-		// only center sonar
-		driver_move(MOTOR_ON_AVANT-50,MOTOR_ON_AVANT-50);
-		// Stay in this state
-		state->next=affiner;
-		break;
-	case 3:
-		// left and center sonar
-		driver_move(MOTOR_ON_AVANT-150,MOTOR_ON_AVANT);
-		// Stay in this state
-		state->next=affiner;
-		break;
-	case 4:
-		// only right sonar
-		driver_move(MOTOR_ON_AVANT,MOTOR_OFF);
-		// Stay in this state
-		state->next=affiner;
-		break;
-	case 5:
-		// left and right sonar
-		driver_move(MOTOR_ON_AVANT-150,MOTOR_ON_AVANT-150);
-		// Stay in this state
-		state->next=affiner;
-		break;
-	case 6:
-		// right and center sonar
-		driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT-150);
-		// Stay in this state
-		state->next=affiner;
-		break;
-	case 7:
-		// 3 sonars
-		driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT);
-		state->state_data.counter=0;
-		state->next=go;
-		return;
-		break;
-	default:
-		state->state_data.counter=0;
-		state->next=search;
-		return;
-		break;
-	}
-	if (state->state_data.counter > AFFINER_COUNT){
-		state->state_data.counter=0;
-		state->next=go;
-	}
 }
 
 /* query_sensors:
@@ -395,32 +310,37 @@ void affiner(struct state*state)
 void query_sensors(struct state * state)
 {
 	/* trigger sonar measure */
-	sonar_query();
+	ultrasonic_trigger_next();
 	/* Copy sonars distances to state*/
-	for(int i=0 ; i <3; i++){
-		state->state_data.sonars[i].value = sonar_get_distance(i);
-#ifdef DEBUG
-		sprintf(dbg_msg,"Sonar %d mesure: %d.\n",i,sonar_get_distance(i));
-		serial_send_str(dbg_msg);
+#ifdef DEBUG2
+		if (state->state_data.sonars[i].value != ultrasonic_get(0)){
+			sprintf(dbg_msg,"Sonar %d mesure: %d.\n",0,ultrasonic_get(0));
+			serial_send_str(dbg_msg);
+		}
 #endif
-	}
+	state->state_data.sonars[0].value = ultrasonic_get(0);
 	/* Copy range ir distances to state */
 	for(int i=0; i<2; i++){
-		state->state_data.ir[i].value = sharp_distance(state->state_data.ir[i].index);
-#ifdef DEBUG_2
-		sprintf(dbg_msg,"SHARP IR %d mesure: %d.\n",
-			i,sharp_distance(state->state_data.ir[i].index));
-		serial_send_str(dbg_msg);
+#ifdef DEBUG
+		if (state->state_data.ir[i].value != sharp_distance(state->state_data.ir[i].index)){
+			sprintf(dbg_msg,"SHARP IR %d: old: %d, new: %d.\n",
+				i, state->state_data.ir[i].value,
+				sharp_distance(state->state_data.ir[i].index));
+			serial_send_str(dbg_msg);
+		}
 #endif
+		state->state_data.ir[i].value = sharp_distance(state->state_data.ir[i].index);
 	}
 	/* Copy line ir detection to state */
 	for(int i=0; i<4; i++){
-		state->state_data.line[i].value = reflectance_is_line(state->state_data.line[i].index);
-#ifdef DEBUG_2
-		sprintf(dbg_msg,"LINE IR %d mesure: %d.\n",
-			i,reflectance_is_line(state->state_data.line[i].index));
-		serial_send_str(dbg_msg);
+#ifdef DEBUG
+		if (state->state_data.line[i].value != reflectance_is_line(state->state_data.line[i].index)){
+			sprintf(dbg_msg,"LINE IR %d mesure: %d.\n",
+				i,reflectance_is_line(state->state_data.line[i].index));
+			serial_send_str(dbg_msg);
+		}
 #endif
+		state->state_data.line[i].value = reflectance_is_line(state->state_data.line[i].index);
 	}
 }
 
@@ -458,8 +378,16 @@ void search_wait(struct state * state)
 	if(starting){
 		state->next=search_wait;
 	}
-	else{
-		state->next=search;
+	else{ // Le combat commence !
+		// Si pas de sonar et pas
+		// à IR, demi tour.
+		if(!state->state_data.sonars[0].value &&
+		   !state->state_data.ir[0].value &&
+		   !state->state_data.ir[1].value){
+			state->next=demi_tour;
+		} else { // Autrement il est devant ou à coté, search prends en charge.
+			state->next=search;
+		}
 	}
 }
 
@@ -483,6 +411,7 @@ void escape(struct state * state)
 	 * Premier phase, on recule.
 	 */
 	if (state->state_data.line[0].value || state->state_data.line[1].value){
+		state->state_data.counter=0; // Tant qu'on est sur la ligne, on demarre pas la tempo
 		driver_move(MOTOR_ON_ARR,MOTOR_ON_ARR);
 		/* Prepare phase two direction */
 		if (state->state_data.line[0].value && state->state_data.line[1].value) {
@@ -494,12 +423,12 @@ void escape(struct state * state)
 		}
 		// Stay here until timeout
 		state->next=escape;
-		return;
 	}
 	/* Ligne derriere
 	 * Premier phase, on avance.
 	 */
 	if (state->state_data.line[2].value || state->state_data.line[3].value){
+		state->state_data.counter=0; // Tant qu'on est sur la ligne, on demarre pas la tempo
 		driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT);
 		/* Prepare phase two direction */
 		if (state->state_data.line[2].value && state->state_data.line[3].value) {
@@ -511,35 +440,30 @@ void escape(struct state * state)
 		}
 		// Stay here until timeout
 		state->next=escape;
-		return;
 	}
 
 	/* Stay in this state until first manoeuver ends */
 	/* TODO(Jaume): set up a lookup table to limit counter */
-	if (state->state_data.counter < 5000 ){
-		state->next=escape;
-		return;
-	} else{ /* Phase two escape manoeuvre */
-
-		/* reset counter */
+	if ((state->state_data.counter) > ESCAPE_COUNT){
 		state->state_data.counter=0;
 		state->next=escape_phase2;
 		return;
 	}
-
-	/* Should never get here, but as this is getting complex, setup a
-	 * safety harness */
-	/* Escape manoeuvre finished, let's search for opponnent */
-	state->next=search;
-	/* And clear counters */
-	state->state_data.counter=0;
 }
 
 void escape_phase2(struct state * state)
 {
-	strcpy(state->name,"escape ph2");
+	strcpy(state->name,"escape_ph2");
 	/* increment counter */
 	state->state_data.counter++;
+	// capteurs de ligne stimulés
+	for(int i=0 ; i <4; i++){
+		if(state->state_data.line[i].value) {
+			state->state_data.counter=0;
+			state->next=escape;
+			return;
+		}
+	}
 	/* Move motors with information set up by phase1 */
 	switch(state->state_data.escape){
 	case AVANT:
@@ -551,37 +475,39 @@ void escape_phase2(struct state * state)
 		break;
 	case AVG:
 		// Un peu vers la gauche
-		driver_move(MOTOR_ON_ARR+100,MOTOR_ON_AVANT);
+		driver_move(MOTOR_ON_ARR+50,MOTOR_ON_AVANT);
 		break;
 	case AVD:
 		// Un peu vers la droite
-		driver_move(MOTOR_ON_AVANT,MOTOR_ON_ARR+100);
+		driver_move(MOTOR_ON_AVANT,MOTOR_ON_ARR+50);
 		break;
 	case ARG:
 		// Un peu vers la gauche
-		driver_move(MOTOR_ON_AVANT-100,MOTOR_ON_ARR);
+		driver_move(MOTOR_ON_AVANT-150,MOTOR_ON_ARR);
 		break;
 	case ARD:
 		// Un peu vers la droite
-		driver_move(MOTOR_ON_ARR,MOTOR_ON_AVANT-100);
+		driver_move(MOTOR_ON_ARR,MOTOR_ON_AVANT-150);
 		break;
+		/*
 	default: // on sort d'ici, on ne sais pas qu'est-ce qu'on y fait d'ailleurs
+		state->state_data.escape=NONE;
 		state->state_data.counter=0;
 		state->next=search;
 		return;
 		break;
+		*/
 	}
 
 	/* set new state selon counter */
 	/* TODO(Jaume): Set up a lookup table to use as counter limit */
-	if (state->state_data.counter < 2500){
+	if (state->state_data.counter < ESCAPE_COUNT_2){
 		state->next=escape_phase2;
 	}
 	else {
 		/* End of 2phase manoeuvre*/
-		state->state_data.escape=NONE;
 		state->state_data.counter=0;
-		driver_move(0,0);
+		driver_move(MOTOR_OFF,MOTOR_OFF);
 		state->next=search;
 	}
 }
@@ -606,14 +532,11 @@ void init(struct state * state)
 	serial_init();
 #endif
 	/* Init sonar */
-	sonar_init();
+	ultrasonic_init();
 	/* add sonar sensor */
-	sonar_add_sensor(&DDRB, &PORTB, PB1); /* Sonar left */
-	sonar_add_sensor(&DDRB, &PORTB, PB2); /* Sonar center */
-	sonar_add_sensor(&DDRD, &PORTD, PD5); /* Sonar right */
+	pin_t sonar_center = {&PORTB,&DDRB,PB2}; /* Sonar center */
+	ultrasonic_add(&sonar_center);
 	state->state_data.sonars[0].value=0;
-	state->state_data.sonars[1].value=0;
-	state->state_data.sonars[2].value=0;
 	/* Init reflectance sensors */
 	reflectance_init();
 	/* add line sensors */
@@ -638,8 +561,6 @@ void init(struct state * state)
 
 	/* Init state counter */
 	state->state_data.counter=0;
-	/* Init state escape mode */
-	state->state_data.escape=NONE;
 
 	/* Add initial delay */
 	init_wait(5, &DDRB, &PORTB, PB4);
@@ -665,8 +586,8 @@ int main(void)
 	while (1) {
 		/* Query sensors and store values in state variable) */
 		query_sensors(&state);
-#ifdef DEBUG
-		sprintf(dbg_msg,"State: %s, Counter: %lu, Escape: %d.\n",
+#ifdef DEBUG2
+		sprintf(dbg_msg,"State: %s, Counter: %u, Escape: %u.\n",
 			state.name, state.state_data.counter, state.state_data.escape);
 		serial_send_str(dbg_msg);
 #endif
