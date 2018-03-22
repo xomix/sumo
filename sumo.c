@@ -88,7 +88,7 @@ struct state_dt{
 	struct direction cur_dir; /* current direction */
 	struct direction scp_dir; /* escape direction */
 	enum second_phase_escape escape; /* second phase escape state */
-	uint32_t counter; /* cycles in state */
+	uint16_t counter; /* cycles in state */
 };
 
 /* struct state contains:
@@ -155,6 +155,7 @@ void search(struct state * state)
 {
 	// Set name for debugging
 	strcpy(state->name,"search");
+	uint8_t my_state = 0; // int variable to code sonar state as a bitfield
 
 	// capteurs de ligne stimulés
 	for(int i=0 ; i <4; i++){
@@ -165,14 +166,31 @@ void search(struct state * state)
 		}
 	}
 
-	// La detection d'un seul sonar nous amene a affiner
-	for(int i=0 ; i <3; i++){
-		if (state->state_data.sonars[i].value) {
-			state->state_data.counter=0;
-			state->next=affiner;
-			return;
+	// Create the bitfield :
+	//	lsb -> left sonar
+	//	middle bit -> center sonar
+	//	msb --> right sonar
+	for (uint8_t i=0; i<3; i++){
+		if(state->state_data.sonars[i].value) {
+			my_state|=(state->state_data.sonars[i].value<<i);
 		}
 	}
+
+	switch(my_state){
+	case 0: // No sonars, look IR sensors
+		break;
+	case 7: // 3 sonars --> go!
+		state->state_data.counter=0;
+		state->next=go;
+		return;
+		break;
+	default: // some sonar configuration detected
+		state->state_data.counter=0;
+		state->next=affiner;
+		return;
+		break;
+	}
+
 	// pas de sonar et opposant à gauche
 	if (state->state_data.ir[0].value) {
 		state->state_data.counter=0;
@@ -189,6 +207,7 @@ void search(struct state * state)
 	/* Pas de détection de l'opposant.
 	 * TODO: On avance? */
 	// driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT);
+	// No counter reset, if we get here, we stick to this state
 	state->next=search;
 }
 
@@ -196,8 +215,8 @@ void quart_tour_droite(struct state *state)
 {
 	// Set name for debugging
 	strcpy(state->name,"quart_tour_droite");
-	state->state_data.counter++;
 	driver_move(MOTOR_ON_AVANT,MOTOR_ON_ARR);
+	state->state_data.counter++;
 	state->next=quart_tour_droite;
 	// capteurs de ligne stimulés
 	for(int i=0 ; i <4; i++){
@@ -208,10 +227,10 @@ void quart_tour_droite(struct state *state)
 		}
 	}
 
-	// Opposant devant, on avance
+	// Opposant supposé devant, on avance
 	if(state->state_data.counter > QUART_TOUR_COUNT){
-		state->state_data.counter=0;
 		driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT);
+		state->state_data.counter=0;
 		state->next=go;
 		return;
 	}
@@ -221,8 +240,8 @@ void quart_tour_gauche(struct state *state)
 {
 	// Set name for debugging
 	strcpy(state->name,"quart_tour_gauche");
-	state->state_data.counter++;
 	driver_move(MOTOR_ON_ARR,MOTOR_ON_AVANT);
+	state->state_data.counter++;
 	state->next=quart_tour_gauche;
 	// capteurs de ligne stimulés
 	for(int i=0 ; i <4; i++){
@@ -235,8 +254,8 @@ void quart_tour_gauche(struct state *state)
 
 	// Opposant devant, on avance
 	if(state->state_data.counter > QUART_TOUR_COUNT){
-		state->state_data.counter=0;
 		driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT);
+		state->state_data.counter=0;
 		state->next=go;
 		return;
 	}
@@ -267,8 +286,8 @@ void go(struct state * state)
 	// Pas de détection sur un des trois sonars --> affiner
 	for(int i=0 ; i <3; i++){
 		if (!state->state_data.sonars[i].value) {
-			state->state_data.counter=0;
 			driver_move(MOTOR_OFF,MOTOR_OFF);
+			state->state_data.counter=0;
 			state->next=affiner;
 			return;
 		}
@@ -310,51 +329,62 @@ void affiner(struct state*state)
 
 	switch(my_state){
 	case 0:
+		state->state_data.counter=0;
 		state->next=search;
 		return;
 		break;
 	case 1:
 		// only left sonar
 		driver_move(MOTOR_OFF,MOTOR_ON_AVANT);
-		state->next=go;
+		// Stay in this state
+		state->next=affiner;
 		break;
 	case 2:
 		// only center sonar
 		driver_move(MOTOR_ON_AVANT-50,MOTOR_ON_AVANT-50);
-		state->next=go;
+		// Stay in this state
+		state->next=affiner;
 		break;
 	case 3:
 		// left and center sonar
 		driver_move(MOTOR_ON_AVANT-150,MOTOR_ON_AVANT);
-		state->next=go;
+		// Stay in this state
+		state->next=affiner;
 		break;
 	case 4:
 		// only right sonar
 		driver_move(MOTOR_ON_AVANT,MOTOR_OFF);
-		state->next=go;
+		// Stay in this state
+		state->next=affiner;
 		break;
 	case 5:
 		// left and right sonar
 		driver_move(MOTOR_ON_AVANT-150,MOTOR_ON_AVANT-150);
-		state->next=go;
+		// Stay in this state
+		state->next=affiner;
 		break;
 	case 6:
 		// right and center sonar
 		driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT-150);
-		state->next=go;
+		// Stay in this state
+		state->next=affiner;
 		break;
 	case 7:
 		// 3 sonars
+		driver_move(MOTOR_ON_AVANT,MOTOR_ON_AVANT);
+		state->state_data.counter=0;
 		state->next=go;
 		return;
 		break;
 	default:
+		state->state_data.counter=0;
 		state->next=search;
 		return;
 		break;
 	}
-	if (state->state_data.counter < AFFINER_COUNT){
-		state->next=affiner;
+	if (state->state_data.counter > AFFINER_COUNT){
+		state->state_data.counter=0;
+		state->next=go;
 	}
 }
 
@@ -462,6 +492,7 @@ void escape(struct state * state)
 		} else {
 			state->state_data.escape=ARD;
 		}
+		// Stay here until timeout
 		state->next=escape;
 		return;
 	}
@@ -478,6 +509,7 @@ void escape(struct state * state)
 		} else {
 			state->state_data.escape=AVG;
 		}
+		// Stay here until timeout
 		state->next=escape;
 		return;
 	}
